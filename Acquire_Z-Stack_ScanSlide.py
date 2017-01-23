@@ -17,22 +17,15 @@ def acquire(xTiles, yTiles,  xPixels, yPixels, binning, cal, areaTopLeftX, areaT
 			# ***** ACQUISITION START *****
 			VV.Acquire.Sequence.Start()
 
-			if len(overviewWindows) > 1:
-				# Get all aquisition windows as they appear
-				for ch,_ in enumerate(overviewWindows):
-					currentWindow = VV.Window.GetHandle.Empty
-					while VV.Window.GetHandle.CheckIfEmpty(currentWindow):
-						currentWindow = VV.Window.GetHandle.Acquire(ch+1)
-					channelWindows.append(currentWindow)
-					print currentWindow.Name
+			# Get all aquisition windows as they appear
+			for ch,_ in enumerate(overviewWindows):
+				currentWindow = VV.Window.GetHandle.Empty
+				while VV.Window.GetHandle.CheckIfEmpty(currentWindow):
+					currentWindow = VV.Window.GetHandle.Acquire(ch+1)
+				channelWindows.append(currentWindow)
 
 			VV.Macro.Control.WaitFor('VV.Acquire.IsRunning', "==", False)
 			# ***** ACQUISITION END *****
-
-			if len(overviewWindows) == 1:
-				# Get single channel acquisition window
-				list = VV.Window.GetHandle.List
-				channelWindows.append(list[len(list)-1])
 
 			# Select each channel, do MIP, add to respective resultImage
 			for index, currentChannel in enumerate(channelWindows):
@@ -58,7 +51,6 @@ def main():
 	# Initialize
 	VV.Macro.PrintWindow.Clear()
 	VV.Acquire.Stage.Series = False
-	VV.Acquire.Sequence.SaveToDisk = True
 
 	# Retrieve information about tile experiment
 	areaTopLeftX = VV.Acquire.Stage.ScanSlide.Area.UpperLeft.X
@@ -85,13 +77,19 @@ def main():
 		nChannels = VV.Acquire.WaveLength.Count
 	else:
 		nChannels = 1
+		currentIlluminationName = VV.Acquire.WaveLength.Illumination
+		VV.Acquire.WaveLength.Current = 1
+		VV.Acquire.WaveLength.Illumination = currentIlluminationName
 
 	resultImages = []
 	overviewWindows = []
-	for _ in range(nChannels):
+	for ch in range(nChannels):
 		resultImage = CvMat(totalSizeY, totalSizeX, MatrixType.U16C1)
 		resultImage.Set(CvScalar(0))
-		overviewWindows.append(VV.Process.CreateEmptyPlane('Monochrome16', totalSizeX, totalSizeY))
+		newWindow = VV.Process.CreateEmptyPlane('Monochrome16', totalSizeX, totalSizeY)
+		VV.Acquire.WaveLength.Current = ch+1			
+		VV.File.Info.Name = VV.File.Info.Name + "_MIP_" + VV.Acquire.WaveLength.Illumination
+		overviewWindows.append(newWindow)
 		VV.Image.WriteFromPointer(resultImage.Data, totalSizeY, totalSizeX)
 		resultImages.append(resultImage)
 
