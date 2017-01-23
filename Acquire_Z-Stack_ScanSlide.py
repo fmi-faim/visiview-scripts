@@ -1,4 +1,7 @@
 # VisiView Macro
+"""
+Documentation
+"""
 import sys
 sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\Examples\Image Access\OpenCV\Library")
 vvimport('OpenCV')
