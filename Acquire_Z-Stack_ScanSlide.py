@@ -3,17 +3,16 @@ import sys
 sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\Examples\Image Access\OpenCV\Library")
 vvimport('OpenCV')
 
-def acquire(xTiles, yTiles,  xPixels, yPixels, bin, cal, areaTopLeftX, areaTopLeftY, totalSizeX, totalSizeY, resultImages, overviewWindows):
+def acquire(xTiles, yTiles,  xPixels, yPixels, binning, cal, areaTopLeftX, areaTopLeftY, totalSizeX, totalSizeY, resultImages, overviewWindows):
 
 	# loop through X and Y dimensions to acquire tiles
 	for i in range(xTiles):
 		for j in range(yTiles):
-			VV.Stage.XPosition = areaTopLeftX + (0.5 * xPixels * bin * cal) + (i * xPixels * bin * cal * 0.9)
-			VV.Stage.YPosition = areaTopLeftY + (0.5 * yPixels * bin * cal) + (j * yPixels * bin * cal * 0.9)
+			VV.Stage.XPosition = areaTopLeftX + (0.5 * xPixels * binning * cal) + (i * xPixels * binning * cal * 0.9)
+			VV.Stage.YPosition = areaTopLeftY + (0.5 * yPixels * binning * cal) + (j * yPixels * binning * cal * 0.9)
 			VV.Macro.Control.Delay(500, "ms") # FIXME is this required?
 
 			channelWindows = []
-			baseName = VV.Acquire.Sequence.GetNextBaseNameFromStartNumber(1)
 
 			# ***** ACQUISITION START *****
 			VV.Acquire.Sequence.Start()
@@ -38,7 +37,7 @@ def acquire(xTiles, yTiles,  xPixels, yPixels, bin, cal, areaTopLeftX, areaTopLe
 			# Select each channel, do MIP, add to respective resultImage
 			for index, currentChannel in enumerate(channelWindows):
 				VV.Window.Selected.Handle = currentChannel;
-				MIP = VV.Process.StackArithmetic('StackMaximum','ProcessOverzfocus')
+				VV.Process.StackArithmetic('StackMaximum','ProcessOverzfocus')
 
 				# Create CvMat image of same dimensions
 				tmpMIP = CvMat(yPixels, xPixels, MatrixType.U16C1)
@@ -60,7 +59,7 @@ def main():
 	VV.Macro.PrintWindow.Clear()
 	VV.Acquire.Stage.Series = False
 	VV.Acquire.Sequence.SaveToDisk = True
-	
+
 	# Retrieve information about tile experiment
 	areaTopLeftX = VV.Acquire.Stage.ScanSlide.Area.UpperLeft.X
 	areaTopLeftY = VV.Acquire.Stage.ScanSlide.Area.UpperLeft.Y
@@ -70,12 +69,12 @@ def main():
 	# Retrieve information about frame and calibration
 	xPixels = VV.Acquire.XDimension
 	yPixels = VV.Acquire.YDimension
-	bin = VV.Acquire.Binning
+	binning = VV.Acquire.Binning
 	cal = VV.Magnification.Calibration.Value
 
-	# Calculate number of tiles	
-	xTiles = int(round((areaLowerRightX-areaTopLeftX)/cal/bin/xPixels))
-	yTiles = int(round((areaLowerRightY-areaTopLeftY)/cal/bin/yPixels))
+	# Calculate number of tiles
+	xTiles = int(round((areaLowerRightX-areaTopLeftX)/cal/binning/xPixels))
+	yTiles = int(round((areaLowerRightY-areaTopLeftY)/cal/binning/yPixels))
 
 	# Calculate size of final stitched image and display empty image
 	totalSizeX = xPixels * 0.9 * xTiles + xPixels * 0.1
@@ -89,15 +88,15 @@ def main():
 
 	resultImages = []
 	overviewWindows = []
-	for c in range(nChannels):
+	for _ in range(nChannels):
 		resultImage = CvMat(totalSizeY, totalSizeX, MatrixType.U16C1)
 		resultImage.Set(CvScalar(0))
-		overviewWindows.append(VV.Process.CreateEmptyPlane('Monochrome16', totalSizeX, totalSizeY))	
+		overviewWindows.append(VV.Process.CreateEmptyPlane('Monochrome16', totalSizeX, totalSizeY))
 		VV.Image.WriteFromPointer(resultImage.Data, totalSizeY, totalSizeX)
 		resultImages.append(resultImage)
 
 	# Acquire tiles
-	acquire(xTiles, yTiles, xPixels, yPixels, bin, cal, areaTopLeftX, areaTopLeftY, totalSizeX, totalSizeY, resultImages, overviewWindows)
+	acquire(xTiles, yTiles, xPixels, yPixels, binning, cal, areaTopLeftX, areaTopLeftY, totalSizeX, totalSizeY, resultImages, overviewWindows)
 
 	# Re-activate series option
 	VV.Acquire.Stage.Series = True
