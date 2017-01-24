@@ -1,4 +1,3 @@
-
 """
 Laurent Gelman & Jan Eglinger
 Friedrich Miescher Institute for Biomedical Research
@@ -20,20 +19,20 @@ def saveTileList(baseDir, baseName, fileNames, xPos, yPos, nChannels):
 		dimNumber = 3
 		lineEnd = ", 0)\n"
 		fileExtension = "stk"
-		
+
 	target.write("# Define the number of dimensions we are working on\ndim = "+str(dimNumber)+"\n\n# Define the image coordinates\n")
-	
+
 	count = 0
 	print (len(xPos))
 	print (len(yPos))
-	
+
 	if nChannels>=2:
 		VV.Acquire.WaveLength.Current = 1
 		subNameString = "_w1"+VV.Acquire.WaveLength.Illumination
 	else:
 		subNameString = "_"+VV.Acquire.WaveLength.Illumination
 
-	for x in range(len(xPos)):
+	for _ in range(len(xPos)):
 		textImageJ = fileNames[count]+ subNameString +"." + fileExtension + "; ; ("+("%.3f" % xPos[count])+", "+("%.3f" % yPos[count])+lineEnd
 		print (textImageJ)
 		target.write(textImageJ)
@@ -48,11 +47,11 @@ def acquire(xTiles, yTiles,  xPixels, yPixels, binning, cal, areaTopLeftX, areaT
 	xPos = []
 	yPos = []
 	fileNames = []
-	
+
 	# loop through X and Y dimensions to acquire tiles
 	for i in range(xTiles):
 		for j in range(yTiles):
-		
+
 			VV.Stage.XPosition = areaTopLeftX + (0.5 * xPixels * binning * cal) + (i * xPixels * binning * cal * 0.9)
 			VV.Stage.YPosition = areaTopLeftY + (0.5 * yPixels * binning * cal) + (j * yPixels * binning * cal * 0.9)
 
@@ -75,7 +74,7 @@ def acquire(xTiles, yTiles,  xPixels, yPixels, binning, cal, areaTopLeftX, areaT
 
 			xPos.append(i * xPixels*0.9)
 			yPos.append(j * yPixels*0.9)
-				
+
 			# Select each channel, do MIP, add to respective resultImage
 			for index, currentChannel in enumerate(channelWindows):
 				VV.Window.Selected.Handle = currentChannel;
@@ -108,7 +107,7 @@ def main():
 	VV.Acquire.Stage.Series = False
 	baseName = VV.Acquire.Sequence.BaseName
 	baseDir = VV.Acquire.Sequence.Directory
-	
+
 	# Retrieve information about tile experiment
 	areaTopLeftX = VV.Acquire.Stage.ScanSlide.Area.UpperLeft.X
 	areaTopLeftY = VV.Acquire.Stage.ScanSlide.Area.UpperLeft.Y
@@ -144,7 +143,7 @@ def main():
 		resultImage = CvMat(totalSizeY, totalSizeX, MatrixType.U16C1)
 		resultImage.Set(CvScalar(0))
 		newWindow = VV.Process.CreateEmptyPlane('Monochrome16', totalSizeX, totalSizeY)
-		VV.Acquire.WaveLength.Current = ch+1			
+		VV.Acquire.WaveLength.Current = ch+1
 		VV.File.Info.Name = VV.File.Info.Name + "_MIP_" + VV.Acquire.WaveLength.Illumination
 		overviewWindows.append(newWindow)
 		VV.Image.WriteFromPointer(resultImage.Data, totalSizeY, totalSizeX)
@@ -152,14 +151,14 @@ def main():
 
 	# Acquire tiles
 	xPos, yPos, fileNames = acquire(xTiles, yTiles, xPixels, yPixels, binning, cal, areaTopLeftX, areaTopLeftY, totalSizeX, totalSizeY, resultImages, overviewWindows)
-	
+
 	# Save TileConfig file
 	if VV.Acquire.Sequence.SaveToDisk:
 		saveTileList(baseDir, baseName, fileNames, xPos, yPos, nChannels)
-	
+
 	# Re-activate series option
 	VV.Acquire.Stage.Series = True
-	
+
 
 try:
 	main()
