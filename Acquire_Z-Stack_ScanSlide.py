@@ -1,23 +1,66 @@
-# VisiView Macro
+
 """
-Documentation
+Laurent Gelman & Jan Eglinger
+Friedrich Miescher Institute for Biomedical Research
+Jan-2017
 """
-import sys
+
+import os, sys
 sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\Examples\Image Access\OpenCV\Library")
 vvimport('OpenCV')
 
+# Save the list of postions in ImageJ format for stitching
+def saveTileList(baseDir, baseName, fileNames, xPos, yPos, nChannels):
+	stageListFile = os.path.join(baseDir, baseName + "_TileConfig.txt")
+	target = open(stageListFile, 'w')
+	dimNumber = 2
+	lineEnd = ")\n"
+	fileExtension = "tif"
+	if VV.Acquire.Z.Series == True:
+		dimNumber = 3
+		lineEnd = ", 0)\n"
+		fileExtension = "stk"
+		
+	target.write("# Define the number of dimensions we are working on\ndim = "+str(dimNumber)+"\n\n# Define the image coordinates\n")
+	
+	count = 0
+	print (len(xPos))
+	print (len(yPos))
+	
+	if nChannels>=2:
+		VV.Acquire.WaveLength.Current = 1
+		subNameString = "_w1"+VV.Acquire.WaveLength.Illumination
+	else:
+		subNameString = "_"+VV.Acquire.WaveLength.Illumination
+
+	for x in range(len(xPos)):
+		textImageJ = fileNames[count]+ subNameString +"." + fileExtension + "; ; ("+("%.3f" % xPos[count])+", "+("%.3f" % yPos[count])+lineEnd
+		print (textImageJ)
+		target.write(textImageJ)
+		count = count + 1
+	target.close()
+
+
+# Acquire the images at calculated stage positions
 def acquire(xTiles, yTiles,  xPixels, yPixels, binning, cal, areaTopLeftX, areaTopLeftY, totalSizeX, totalSizeY, resultImages, overviewWindows):
 
+	# Create arrays of X,Y postions
+	xPos = []
+	yPos = []
+	fileNames = []
+	
 	# loop through X and Y dimensions to acquire tiles
 	for i in range(xTiles):
 		for j in range(yTiles):
+		
 			VV.Stage.XPosition = areaTopLeftX + (0.5 * xPixels * binning * cal) + (i * xPixels * binning * cal * 0.9)
 			VV.Stage.YPosition = areaTopLeftY + (0.5 * yPixels * binning * cal) + (j * yPixels * binning * cal * 0.9)
-			VV.Macro.Control.Delay(500, "ms") # FIXME is this required?
 
 			channelWindows = []
 
 			# ***** ACQUISITION START *****
+			VV.Macro.Control.WaitFor('VV.Stage.IsMoving', "==", False)
+			fileNames.append(VV.Acquire.Sequence.NextBaseName)
 			VV.Acquire.Sequence.Start()
 
 			# Get all aquisition windows as they appear
@@ -30,6 +73,9 @@ def acquire(xTiles, yTiles,  xPixels, yPixels, binning, cal, areaTopLeftX, areaT
 			VV.Macro.Control.WaitFor('VV.Acquire.IsRunning', "==", False)
 			# ***** ACQUISITION END *****
 
+			xPos.append(i * xPixels*0.9)
+			yPos.append(j * yPixels*0.9)
+				
 			# Select each channel, do MIP, add to respective resultImage
 			for index, currentChannel in enumerate(channelWindows):
 				VV.Window.Selected.Handle = currentChannel;
@@ -43,18 +89,26 @@ def acquire(xTiles, yTiles,  xPixels, yPixels, binning, cal, areaTopLeftX, areaT
 				offset = CvPoint(i * xPixels*0.9, j * yPixels*0.9)
 				tmpMIP.CopyMakeBorder(tmpCopy, offset, 0)
 				resultImages[index].Max(tmpCopy, resultImages[index])
-
 				VV.Window.Selected.Handle = currentChannel
 				VV.Window.Selected.Close(False)
 
 				VV.Window.Selected.Handle = overviewWindows[index]
 				VV.Image.WriteFromPointer(resultImages[index].Data, totalSizeY, totalSizeX)
 
+	return xPos, yPos, fileNames
+
+
+
 def main():
+
+	VV.Macro.PrintWindow.Clear()
+
 	# Initialize
 	VV.Macro.PrintWindow.Clear()
 	VV.Acquire.Stage.Series = False
-
+	baseName = VV.Acquire.Sequence.BaseName
+	baseDir = VV.Acquire.Sequence.Directory
+	
 	# Retrieve information about tile experiment
 	areaTopLeftX = VV.Acquire.Stage.ScanSlide.Area.UpperLeft.X
 	areaTopLeftY = VV.Acquire.Stage.ScanSlide.Area.UpperLeft.Y
@@ -97,13 +151,19 @@ def main():
 		resultImages.append(resultImage)
 
 	# Acquire tiles
-	acquire(xTiles, yTiles, xPixels, yPixels, binning, cal, areaTopLeftX, areaTopLeftY, totalSizeX, totalSizeY, resultImages, overviewWindows)
-
+	xPos, yPos, fileNames = acquire(xTiles, yTiles, xPixels, yPixels, binning, cal, areaTopLeftX, areaTopLeftY, totalSizeX, totalSizeY, resultImages, overviewWindows)
+	
+	# Save TileConfig file
+	if VV.Acquire.Sequence.SaveToDisk:
+		saveTileList(baseDir, baseName, fileNames, xPos, yPos, nChannels)
+	
 	# Re-activate series option
 	VV.Acquire.Stage.Series = True
+	
 
 try:
 	main()
 except KeyboardInterrupt:
 	# Re-activate series option
 	VV.Acquire.Stage.Series = True
+
