@@ -101,6 +101,7 @@ def acquire(xTiles, yTiles,  xPixels, yPixels, binning, cal, areaTopLeftX, areaT
 def main():
 
 	VV.Macro.PrintWindow.Clear()
+	ConfigTileName = VV.Acquire.Sequence.NextBaseName
 
 	# Initialize
 	VV.Macro.PrintWindow.Clear()
@@ -154,7 +155,7 @@ def main():
 
 	# Save TileConfig file
 	if VV.Acquire.Sequence.SaveToDisk:
-		saveTileList(baseDir, baseName, fileNames, xPos, yPos, nChannels)
+		saveTileList(baseDir, ConfigTileName, fileNames, xPos, yPos, nChannels)
 
 	# Re-activate series option
 	VV.Acquire.Stage.Series = True
