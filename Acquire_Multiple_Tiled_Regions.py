@@ -473,7 +473,7 @@ def main():
 	cX, cY, cZ = parsePositions()
 	magnificationRatio = float(VV.Magnification.Calibration.Value)/float(VV.Image.Calibration.Value)
 	bin = VV.Acquire.Binning
-	
+	VV.Acquire.Stage.SeriesType = 'PositionList'
 	reuseFocusMap = False
 	baseName, reuseFocusMap = configDialog()
 
@@ -499,6 +499,7 @@ def main():
 	imageWithRegion = CvMat(he,wi,MatrixType.U16C1)
 	imageWithRegion.Set(CvScalar(0))
 	restoreRegions(regionFileName)
+	polyLines = Array.CreateInstance(Array[CvPoint], VV.Window.Regions.Count)
 	for r in range(VV.Window.Regions.Count):
 		VV.Window.Regions.Active.Index = r+1
 		points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
@@ -508,9 +509,8 @@ def main():
 		polyLine = Array.CreateInstance(CvPoint, len(CoordX))
 		for i in range(len(CoordX)):
 			polyLine[i] = CvPoint(CoordX[i],CoordY[i])
-		polyLines = Array.CreateInstance(Array[CvPoint], 1)
-		polyLines[0] = polyLine
-		imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(65000))
+		polyLines[r] = polyLine
+	imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(65000))
 	VV.Image.WriteFromPointer(imageWithRegion.Data, wi, he)
 	VV.Edit.Regions.ClearAll()
 	# *************************************************************************************	
