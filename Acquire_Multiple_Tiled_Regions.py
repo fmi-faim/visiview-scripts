@@ -5,6 +5,7 @@ from pprint import pprint
 from System import Array
 sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\Examples\Image Access\OpenCV\Library")
 vvimport('OpenCV')
+import datetime
 
 def parsePositions():
 	tempDir = os.getenv("TEMP")
@@ -290,11 +291,9 @@ def generateHeightImage(width, height, calibration, cX, cY, cZ):
 	# xRight, yBottom = VV.File.ConvertImageCoordinatesToStageCoordinates(width,height)
 	# Triangulate list and corner points
 	points = buildTriangles(cX, cY, cZ,xLeft,yTop,width*calibration,height*calibration)
-	print(points)
-	print "****"
+
 	# transform to pixel coords
 	transformTriangles(points, calibration, xLeft, yTop)
-	print(points)
 	# create empty heightImage
 	outputImage = CvMat(height, width, MatrixType.F32C1)
 	outputImage.Set(CvScalar(0.0))
@@ -468,6 +467,9 @@ def restoreRegions(regionFileName):
 
 def main():
 
+	# *************************************************************************************
+	# Initialization
+	# *************************************************************************************
 	overviewHandle = VV.Window.GetHandle.Active
 	cal = VV.Image.Calibration.Value
 	cX, cY, cZ = parsePositions()
@@ -476,7 +478,12 @@ def main():
 	VV.Acquire.Stage.SeriesType = 'PositionList'
 	reuseFocusMap = False
 	baseName, reuseFocusMap = configDialog()
-
+	baseDir = VV.Acquire.Sequence.Directory
+	totalTileNumber = 0
+	expTimeAllChannels = 0
+	numberOfPlanes = 1
+	VV.Macro.PrintWindow.Clear()
+	VV.Macro.PrintWindow.IsVisible = True
 
 	# Unselect regions
 	regionFileName = "MultiTileRegion.rgn"
@@ -484,6 +491,7 @@ def main():
 	VV.Window.Regions.Active.Index = VV.Window.Regions.Count + 1
 	# will have to be replaced by
 	# VV.Window.Regions.Active.IsValid = False
+
 	
 	
 	# *************************************************************************************
@@ -513,8 +521,13 @@ def main():
 	imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(65000))
 	VV.Image.WriteFromPointer(imageWithRegion.Data, wi, he)
 	VV.Edit.Regions.ClearAll()
-	# *************************************************************************************	
+	VV.File.SaveAs(os.path.join(baseDir, baseName+'_Regions.tif'), True)
 
+
+
+	# *************************************************************************************
+	# Create Focus Map
+	# *************************************************************************************
 	VV.Window.Active.Handle = overviewHandle
 	if not reuseFocusMap:
 		heightImage = generateHeightImage(VV.Image.Width, VV.Image.Height, cal, cX, cY, cZ)
@@ -525,6 +538,8 @@ def main():
 	else:
 		# load image, get data as CvMat, un-normalize with min and max
 		heightImage = loadHeightImage()
+
+
 	
 	# TODO take care of regions and active image
 	VV.Window.Active.Handle = overviewHandle
@@ -532,44 +547,54 @@ def main():
 
 	# Create binary mask (CvMat) with all regions
 	binaryMask = generateEmptyMask(VV.Image.Height, VV.Image.Width)
-	#displayImage(binaryMask)
-	#VV.Edit.Regions.Load(regionFileName)
-
-	#VV.Window.Active.Handle = overviewHandle
-	#VV.Macro.Control.Delay(1000,'ms')
-	print VV.Window.Regions.Count
-	
-	#baseName = VV.Acquire.Sequence.BaseName
-	baseDir = VV.Acquire.Sequence.Directory
 	
 	stgFileList = []
-
-	# loop over all regions (as bounding box)
-	# numOfStacks = 0
-	# ExposuretimeOneimage = 0
+	numberTilesEachRegion = []
 	for r in range(VV.Window.Regions.Count):
 		currentTiles, imgTileRegions, imgCentersX, imgCentersY, imgFocusPoints = getAcquisitionTiles(r+1, binaryMask, bin, magnificationRatio, heightImage)
 		VV.Window.Selected.Handle = overviewHandle
 		for tile in currentTiles:
 			VV.Window.Regions.AddCentered("Rectangle", tile.X+tile.Width/2, tile.Y+tile.Height/2, tile.Width, tile.Height)
 		stgFileList.append(saveTileList(r, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints))
-		# numOfStacks = numOfStacks + len(currentTiles)
-	
-	# for ch in VV.Acquire.channels:
-	#	select ch
-	#	ExposuretimeOneimage = ExposuretimeOneimage + get (ch exposure time)
-	# Total time if all ch sequential = ExposuretimeOneimage * numOfStacks * VV.Acquire.Zstack.numberOfPlanes * 1.1
+		numberTilesEachRegion.append(len(currentTiles))
+
+	#	print ("Region "+str(r)+" has "+str(len(currentTiles))+" tiles"
+	#	if VV.Acquire.WaveLength.Series == True:
+	#		for ch in VV.Acquire.WaveLength.Count:
+	#			VV.Acquire.WaveLength.Current=ch
+	#			expTimeAllChannels = expTimeAllChannels + VV.Acquire.ExposureTimeMillisecs
+	#	else:
+	#		expTimeAllChannels = expTimeAllChannels + VV.Acquire.ExposureTimeMillisecs
+	#	totalAcquisitionTime = expTimeAllChannels * numberOfPlanes * totalTileNumber
 
 	# Select overview image with regions
 	VV.Window.Active.Handle = overviewHandle
 	#VV.Edit.Regions.Load(regionFileName)
 	
 	# acquire all tiles (new macro with choice dialog)
-	for stgFile in stgFileList:
+	timeStart = datetime.datetime.now()
+	print (timeStart.strftime("Experiment started at %H:%M:%S"))
+
+	for count, stgFile in enumerate(stgFileList):
+		# Estimate time for acquisition of tiles
+		if count == 1:
+			timeFirstRegion = datetime.datetime.now()
+			diff = timeFirstRegion - timeStart
+			timeAcquisitionFirstRegion = diff.total_seconds()
+			timePerTile = timeAcquisitionFirstRegion / numberTilesEachRegion[0]
+			print ("\n______________________\n")
+			for k in range(len(numberTilesEachRegion)):
+				print ("Time to acquire region "+str(k)+" (containing "+str(numberTilesEachRegion[k])+" tiles) = "+str(int(timePerTile*numberTilesEachRegion[k]))+" sec")
+				timeStart = timeStart + diff/numberTilesEachRegion[0]*numberTilesEachRegion[k]
+				if k>0:
+					print ("  => Region "+str(k)+" will finish at "+timeStart.strftime("%H:%M:%S"))
+			print ("______________________\n")
+					
+		# Acquire tiles		
 		VV.Acquire.Stage.PositionList.Load(stgFile)
 		m = re.match(r'.*\\([^\\]+).stg', stgFile)
 		VV.Acquire.Sequence.BaseName = m.group(1)
-		print ("Now acquiring " + m.group(1))
+		print ("\nNow acquiring " + m.group(1)+"...")
 		VV.Acquire.Sequence.Start()
 		VV.Macro.Control.WaitFor('VV.Acquire.IsRunning', "==", False)
 		# close image windows after acquisition
