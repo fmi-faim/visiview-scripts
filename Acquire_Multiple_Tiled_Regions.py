@@ -545,6 +545,25 @@ def main():
 	restoreFocusPositions()
 	restoreRegions(regionFileName)
 
+	# *************************************************************************************
+	# Create an image with the numbers of the regions
+	VV.Window.Active.Handle = overviewHandle
+	VV.Window.Selected.Handle = overviewHandle
+	VV.Window.Regions.Active.Index = VV.Window.Regions.Count + 1
+	VV.Process.DuplicatePlane()
+	VV.File.Info.Name = "Region Identification in "+baseName
+	he = VV.Image.Height
+	wi = VV.Image.Width
+	imageWithRegion = CvMat(he,wi,MatrixType.U16C1)
+	imageWithRegion.Set(CvScalar(0))
+	restoreRegions(regionFileName)
+	for r in range(VV.Window.Regions.Count):
+		VV.Window.Regions.Active.Index = r+1
+		points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
+		imageWithRegion.PutText(str(r), CvPoint(CoordX[0],CoordY[0]), CvFont(FontFace.Italic,2,1), CvScalar(65000))
+	VV.Image.WriteFromPointer(imageWithRegion.Data, wi, he)
+CvFont.FontFace	# *************************************************************************************	
+
 
 VV.Macro.PrintWindow.Clear()
 
