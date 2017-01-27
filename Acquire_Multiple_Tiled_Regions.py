@@ -476,12 +476,12 @@ def main():
 	# *************************************************************************************
 	# Initialization
 	# *************************************************************************************
-
 	user32 = ctypes.windll.user32
 	screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 	overviewHandle = VV.Window.GetHandle.Active
 	VV.Window.Selected.Top = 10
 	VV.Window.Selected.Left = user32.GetSystemMetrics(0)/4+10
+	VV.Window.Selected.Height = user32.GetSystemMetrics(1)/3
 	cal = VV.Image.Calibration.Value
 	cX, cY, cZ = parsePositions()
 	magnificationRatio = float(VV.Magnification.Calibration.Value)/float(VV.Image.Calibration.Value)
