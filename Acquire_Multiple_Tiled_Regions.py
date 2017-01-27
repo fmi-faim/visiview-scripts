@@ -6,6 +6,7 @@ from System import Array
 sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\Examples\Image Access\OpenCV\Library")
 vvimport('OpenCV')
 import datetime
+import ctypes
 
 def parsePositions():
 	tempDir = os.getenv("TEMP")
@@ -461,14 +462,26 @@ def restoreFocusPositions():
 def restoreRegions(regionFileName):
 	VV.Edit.Regions.Load(regionFileName)
 
+
+
+# *************************************************************************************
+# *************************************************************************************
+#
+# MAIN
+#
+# *************************************************************************************
+# *************************************************************************************
 def main():
 
 	# *************************************************************************************
 	# Initialization
 	# *************************************************************************************
+
+	user32 = ctypes.windll.user32
+	screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 	overviewHandle = VV.Window.GetHandle.Active
-	VV.Window.Selected.Top = 200
-	VV.Window.Selected.Left = 200
+	VV.Window.Selected.Top = 10
+	VV.Window.Selected.Left = user32.GetSystemMetrics(0)/4+10
 	cal = VV.Image.Calibration.Value
 	cX, cY, cZ = parsePositions()
 	magnificationRatio = float(VV.Magnification.Calibration.Value)/float(VV.Image.Calibration.Value)
@@ -483,6 +496,7 @@ def main():
 	VV.Macro.PrintWindow.Clear()
 	VV.Macro.PrintWindow.IsVisible = True
 
+	
 	# Unselect regions
 	regionFileName = "MultiTileRegion.rgn"
 	VV.Edit.Regions.Save(regionFileName)
@@ -505,7 +519,7 @@ def main():
 	imageWithRegion = CvMat(he,wi,MatrixType.U16C1)
 	imageWithRegion.Set(CvScalar(0))
 	restoreRegions(regionFileName)
-	polyLines = Array.CreateInstance(Array[CvPoint], VV.Window.Regions.Count)
+	polyLines = Array.CreateInstance(Array[CvPoint], 1)
 	for r in range(VV.Window.Regions.Count):
 		VV.Window.Regions.Active.Index = r+1
 		points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
@@ -514,13 +528,19 @@ def main():
 		imageWithRegion.PutText(str(r), CvPoint(CoordX[0]-5,CoordY[0]-5), font, CvScalar(65000))
 		polyLine = Array.CreateInstance(CvPoint, len(CoordX))
 		for i in range(len(CoordX)):
-			polyLine[i] = CvPoint(CoordX[i],CoordY[i])
-		polyLines[r] = polyLine
-	imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(30000),3)
+			polyLine[i] = CvPoint(CoordX[i],CoordY[i])	
+		polyLines[0] = polyLine
+		VV.Window.Regions.Active.Index=r+1
+		if VV.Window.Regions.Active.Type=='PolyLine':
+			imageWithRegion.DrawPolyLine(polyLines, False, CvScalar(30000),6)
+		else:
+			imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(30000),6)
 	VV.Image.WriteFromPointer(imageWithRegion.Data, he, wi)
 	VV.Edit.Regions.ClearAll()
-	VV.Window.Selected.Top=20
-	VV.Window.Selected.Left=20
+	VV.Window.Selected.Top=10
+	VV.Window.Selected.Left=10
+	VV.Window.Selected.Width=user32.GetSystemMetrics(0)/4
+
 	path = os.path.join(baseDir, baseName+'_regions.tif')
 	VV.File.SaveAs(path, True)
 
@@ -538,8 +558,9 @@ def main():
 	else:
 		# load image, get data as CvMat, un-normalize with min and max
 		heightImage = loadHeightImage()
-	VV.Window.Selected.Top = 100
-	VV.Window.Selected.Left = 100
+	VV.Window.Selected.Top = user32.GetSystemMetrics(1)/3
+	VV.Window.Selected.Left = 10
+	VV.Window.Selected.Width=user32.GetSystemMetrics(0)/4
 	
 	# TODO take care of regions and active image
 	VV.Window.Active.Handle = overviewHandle
@@ -563,27 +584,27 @@ def main():
 
 		VV.Macro.MessageBox.ShowAndWait("Please Adjust Tiles for region "+str(r), "Tile Adjustment", False)
 		
-		numRegions = VV.Window.Regions.Count	
+		# *************************************************************************************
+		# Adjust calculated tiles
+		# *************************************************************************************		
+
 		imgFocusPoints = []
-		for t in range(len(currentTiles)):
-			if t<numRegions:
+		imgCentersX = []
+		imgCentersY = []
+		
+		for t in range(VV.Window.Regions.Count):
 				VV.Window.Regions.Active.Index = t+1
 				left = VV.Window.Regions.Active.Left
 				width = VV.Window.Regions.Active.Width
 				top = VV.Window.Regions.Active.Top
 				height = VV.Window.Regions.Active.Height
-				imgCentersX[t] = left+width/2			
-				imgCentersY[t] = top+height/2
+				imgCentersX.append(left+width/2)		
+				imgCentersY.append(top+height/2)
 				dummy, focusTile = heightImage.GetSubRect(CvRect(left, top, width, height))
 				imgFocusPoints.append(focusTile.Avg().Val0)
-			else:
-				imgCentersX.pop(len(imgCentersX)-1)
-				imgCentersY.pop(len(imgCentersY)-1)
 
-		numberTilesEachRegion.append(numRegions)		
+		numberTilesEachRegion.append(VV.Window.Regions.Count)		
 		stgFileList.append(saveTileList(r, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints))
-		
-
 
 
 	# Select overview image with regions
@@ -621,8 +642,6 @@ def main():
 	restoreFocusPositions()
 	restoreRegions(regionFileName)
 
-
-VV.Macro.PrintWindow.Clear()
 
 try:
 	main()
