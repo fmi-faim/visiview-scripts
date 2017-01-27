@@ -398,7 +398,6 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 		imgTileRegions = []
 		imgCentersX = []
 		imgCentersY = []
-		imgFocusPoints = []
 
 		# return all possible tiles
 		for col in range(int(nTilesX)):
@@ -419,14 +418,11 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 				if(int(maxValue) == 255):
 					imgTiles.append(currentTile)
 					imgTileRegions.append(regionIndex)
-					# write line into TileConf file
-					dummy, focusTile = heightImage.GetSubRect(currentTile)
-					imgFocusPoints.append(focusTile.Avg().Val0)
 					imgCentersX.append(tLeft + tileWidth/2)
 					imgCentersY.append(tTop + tileHeight/2)
 					
 		# Return all results
-		return imgTiles, imgTileRegions, imgCentersX, imgCentersY, imgFocusPoints
+		return imgTiles, imgTileRegions, imgCentersX, imgCentersY
 
 def saveTileList(roiNumber, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints):
 	stageListFile = os.path.join(baseDir, baseName + "_Region-" + str(roiNumber) + "_nTiles-" + str(len(imgCentersX)) + ".stg")
@@ -454,7 +450,7 @@ def configDialog():
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
 		doReUse = reusefocusmap
 	VV.Acquire.Sequence.BaseName = basename
-	return basename, doReUse
+	return (basename[:-1] if basename.endswith('_') else basename), doReUse
 
 def restoreFocusPositions():
 	tempDir = os.getenv("TEMP")
@@ -513,20 +509,20 @@ def main():
 	for r in range(VV.Window.Regions.Count):
 		VV.Window.Regions.Active.Index = r+1
 		points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
-		font = CvFont(FontFace.Italic,2,1)
-		font.Thickness = 2
-		imageWithRegion.PutText(str(r), CvPoint(CoordX[0],CoordY[0]), font, CvScalar(65000))
+		font = CvFont(FontFace.Italic,4,1)
+		font.Thickness = 4
+		imageWithRegion.PutText(str(r), CvPoint(CoordX[0]-5,CoordY[0]-5), font, CvScalar(65000))
 		polyLine = Array.CreateInstance(CvPoint, len(CoordX))
 		for i in range(len(CoordX)):
 			polyLine[i] = CvPoint(CoordX[i],CoordY[i])
 		polyLines[r] = polyLine
-	imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(65000))
-	VV.Image.WriteFromPointer(imageWithRegion.Data, wi, he)
+	imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(30000),3)
+	VV.Image.WriteFromPointer(imageWithRegion.Data, he, wi)
 	VV.Edit.Regions.ClearAll()
 	VV.Window.Selected.Top=20
 	VV.Window.Selected.Left=20
-	VV.File.SaveAs(os.path.join(baseDir, baseName+'_Regions.tif'), True)
-
+	path = os.path.join(baseDir, baseName+'_regions.tif')
+	VV.File.SaveAs(path, True)
 
 
 	# *************************************************************************************
@@ -554,25 +550,23 @@ def main():
 	
 	stgFileList = []
 	numberTilesEachRegion = []
+
 	for r in range(VV.Window.Regions.Count):
 		VV.Window.Selected.Handle = overviewHandle
 		VV.Edit.Regions.ClearAll()
 		VV.Edit.Regions.Load(regionFileName)
-		currentTiles, imgTileRegions, imgCentersX, imgCentersY, imgFocusPoints = getAcquisitionTiles(r+1, binaryMask, bin, magnificationRatio, heightImage)
+		currentTiles, imgTileRegions, imgCentersX, imgCentersY = getAcquisitionTiles(r+1, binaryMask, bin, magnificationRatio, heightImage)
 		VV.Edit.Regions.ClearAll()
-		"""
-		print("\nRegion "+str(r))
-		print (imgCentersX)
-		print (imgCentersY)
-		print (imgFocusPoints)
-		"""
+
 		for tile in currentTiles:
 			VV.Window.Regions.AddCentered("Rectangle", tile.X+tile.Width/2, tile.Y+tile.Height/2, tile.Width, tile.Height)
 
 		VV.Macro.MessageBox.ShowAndWait("Please Adjust Tiles for region "+str(r), "Tile Adjustment", False)
-			
+		
+		numRegions = VV.Window.Regions.Count	
+		imgFocusPoints = []
 		for t in range(len(currentTiles)):
-			if t<VV.Window.Regions.Count:
+			if t<numRegions:
 				VV.Window.Regions.Active.Index = t+1
 				left = VV.Window.Regions.Active.Left
 				width = VV.Window.Regions.Active.Width
@@ -581,18 +575,12 @@ def main():
 				imgCentersX[t] = left+width/2			
 				imgCentersY[t] = top+height/2
 				dummy, focusTile = heightImage.GetSubRect(CvRect(left, top, width, height))
-				imgFocusPoints[t] = focusTile.Avg().Val0
-				
+				imgFocusPoints.append(focusTile.Avg().Val0)
 			else:
-				imgCentersX.pop(t)
-				imgCentersY.pop(t)
-				imgFocusPoints.pop(t)
-		"""
-		print (imgCentersX)
-		print (imgCentersY)
-		print (imgFocusPoints)
-		"""
-		numberTilesEachRegion.append(VV.Window.Regions.Count)		
+				imgCentersX.pop(len(imgCentersX)-1)
+				imgCentersY.pop(len(imgCentersY)-1)
+
+		numberTilesEachRegion.append(numRegions)		
 		stgFileList.append(saveTileList(r, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints))
 		
 
