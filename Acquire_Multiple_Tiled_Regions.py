@@ -471,6 +471,8 @@ def main():
 	# Initialization
 	# *************************************************************************************
 	overviewHandle = VV.Window.GetHandle.Active
+	VV.Window.Selected.Top = 200
+	VV.Window.Selected.Left = 200
 	cal = VV.Image.Calibration.Value
 	cX, cY, cZ = parsePositions()
 	magnificationRatio = float(VV.Magnification.Calibration.Value)/float(VV.Image.Calibration.Value)
@@ -521,6 +523,8 @@ def main():
 	imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(65000))
 	VV.Image.WriteFromPointer(imageWithRegion.Data, wi, he)
 	VV.Edit.Regions.ClearAll()
+	VV.Window.Selected.Top=20
+	VV.Window.Selected.Left=20
 	VV.File.SaveAs(os.path.join(baseDir, baseName+'_Regions.tif'), True)
 
 
@@ -538,8 +542,8 @@ def main():
 	else:
 		# load image, get data as CvMat, un-normalize with min and max
 		heightImage = loadHeightImage()
-
-
+	VV.Window.Selected.Top = 100
+	VV.Window.Selected.Left = 100
 	
 	# TODO take care of regions and active image
 	VV.Window.Active.Handle = overviewHandle
@@ -551,21 +555,48 @@ def main():
 	stgFileList = []
 	numberTilesEachRegion = []
 	for r in range(VV.Window.Regions.Count):
-		currentTiles, imgTileRegions, imgCentersX, imgCentersY, imgFocusPoints = getAcquisitionTiles(r+1, binaryMask, bin, magnificationRatio, heightImage)
 		VV.Window.Selected.Handle = overviewHandle
+		VV.Edit.Regions.ClearAll()
+		VV.Edit.Regions.Load(regionFileName)
+		currentTiles, imgTileRegions, imgCentersX, imgCentersY, imgFocusPoints = getAcquisitionTiles(r+1, binaryMask, bin, magnificationRatio, heightImage)
+		VV.Edit.Regions.ClearAll()
+		"""
+		print("\nRegion "+str(r))
+		print (imgCentersX)
+		print (imgCentersY)
+		print (imgFocusPoints)
+		"""
 		for tile in currentTiles:
 			VV.Window.Regions.AddCentered("Rectangle", tile.X+tile.Width/2, tile.Y+tile.Height/2, tile.Width, tile.Height)
-		stgFileList.append(saveTileList(r, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints))
-		numberTilesEachRegion.append(len(currentTiles))
 
-	#	print ("Region "+str(r)+" has "+str(len(currentTiles))+" tiles"
-	#	if VV.Acquire.WaveLength.Series == True:
-	#		for ch in VV.Acquire.WaveLength.Count:
-	#			VV.Acquire.WaveLength.Current=ch
-	#			expTimeAllChannels = expTimeAllChannels + VV.Acquire.ExposureTimeMillisecs
-	#	else:
-	#		expTimeAllChannels = expTimeAllChannels + VV.Acquire.ExposureTimeMillisecs
-	#	totalAcquisitionTime = expTimeAllChannels * numberOfPlanes * totalTileNumber
+		VV.Macro.MessageBox.ShowAndWait("Please Adjust Tiles for region "+str(r), "Tile Adjustment", False)
+			
+		for t in range(len(currentTiles)):
+			if t<VV.Window.Regions.Count:
+				VV.Window.Regions.Active.Index = t+1
+				left = VV.Window.Regions.Active.Left
+				width = VV.Window.Regions.Active.Width
+				top = VV.Window.Regions.Active.Top
+				height = VV.Window.Regions.Active.Height
+				imgCentersX[t] = left+width/2			
+				imgCentersY[t] = top+height/2
+				dummy, focusTile = heightImage.GetSubRect(CvRect(left, top, width, height))
+				imgFocusPoints[t] = focusTile.Avg().Val0
+				
+			else:
+				imgCentersX.pop(t)
+				imgCentersY.pop(t)
+				imgFocusPoints.pop(t)
+		"""
+		print (imgCentersX)
+		print (imgCentersY)
+		print (imgFocusPoints)
+		"""
+		numberTilesEachRegion.append(VV.Window.Regions.Count)		
+		stgFileList.append(saveTileList(r, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints))
+		
+
+
 
 	# Select overview image with regions
 	VV.Window.Active.Handle = overviewHandle
