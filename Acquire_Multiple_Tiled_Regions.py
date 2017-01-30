@@ -480,7 +480,7 @@ def main():
 	screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 	overviewHandle = VV.Window.GetHandle.Active
 	VV.Window.Selected.Top = 10
-	VV.Window.Selected.Left = user32.GetSystemMetrics(0)/4+10
+	VV.Window.Selected.Left = 10
 	VV.Window.Selected.Height = user32.GetSystemMetrics(1)/3
 	cal = VV.Image.Calibration.Value
 	cX, cY, cZ = parsePositions()
@@ -537,8 +537,8 @@ def main():
 			imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(30000),6)
 	VV.Image.WriteFromPointer(imageWithRegion.Data, he, wi)
 	VV.Edit.Regions.ClearAll()
-	VV.Window.Selected.Top=10
-	VV.Window.Selected.Left=10
+	VV.Window.Selected.Top = user32.GetSystemMetrics(1)/3 + 20
+	VV.Window.Selected.Left = 10
 	VV.Window.Selected.Width=user32.GetSystemMetrics(0)/4
 
 	path = os.path.join(baseDir, baseName+'_regions.tif')
@@ -558,8 +558,8 @@ def main():
 	else:
 		# load image, get data as CvMat, un-normalize with min and max
 		heightImage = loadHeightImage()
-	VV.Window.Selected.Top = user32.GetSystemMetrics(1)/3
-	VV.Window.Selected.Left = 10
+	VV.Window.Selected.Top = user32.GetSystemMetrics(1)/3 +60
+	VV.Window.Selected.Left = 30
 	VV.Window.Selected.Width=user32.GetSystemMetrics(0)/4
 	
 	# TODO take care of regions and active image
