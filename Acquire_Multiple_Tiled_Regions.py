@@ -343,16 +343,17 @@ def loadHeightImage():
 	heightImageDenormalized = (heightImageFloat * (focusMax - focusMin)) / 65535 + CvScalar(focusMin)
 	return heightImageDenormalized
 
-def displayHeightImage(heightImage, focusMin, focusMax, regionFileName):
+def displayHeightImage(heightImage, focusMin, focusMax, regionFileName, scale, heightImageW, heightImageH):
 	heightImageNormalized = heightImage if (focusMax==focusMin) else (heightImage-CvScalar(focusMin))*65535/(focusMax-focusMin)
 
-	heightImageU16 = CvMat(VV.Image.Height, VV.Image.Width, MatrixType.U16C1)
+	heightImageU16 = CvMat(heightImageH, heightImageW, MatrixType.U16C1)
 	heightImageNormalized.Convert(heightImageU16)
 	
-	VV.Edit.Duplicate.Plane()
-	VV.Image.WriteFromPointer(heightImageU16.Data,VV.Image.Height, VV.Image.Width)
-	if regionFileName:
-		VV.Edit.Regions.Load(regionFileName)
+	#VV.Edit.Duplicate.Plane()
+	VV.Process.CreateEmptyPlane('Monochrome16', heightImageH, heightImageW)
+	VV.Image.WriteFromPointer(heightImageU16.Data, heightImageH, heightImageW)
+	#if regionFileName:
+	#	VV.Edit.Regions.Load(regionFileName)
 
 def displayImage(cvImage):
 	VV.Process.CreateEmptyPlane('Monochrome8',VV.Image.Width, VV.Image.Height)
@@ -524,10 +525,11 @@ def main():
 	VV.Window.Active.Handle = overviewHandle
 	VV.Window.Selected.Handle = overviewHandle
 	VV.Window.Regions.Active.Index = VV.Window.Regions.Count + 1
-	VV.Process.DuplicatePlane()
-	VV.File.Info.Name = "Region Identification in "+baseName
 	he = VV.Image.Height
 	wi = VV.Image.Width
+	VV.Process.DuplicatePlane()
+	VV.File.Info.Name = "Region Identification in "+baseName
+
 	zoom = VV.Window.Selected.ZoomPercent
 	imageWithRegion = CvMat(he,wi,MatrixType.U16C1)
 	imageWithRegion.Set(CvScalar(0))
@@ -562,11 +564,14 @@ def main():
 	# Create Focus Map
 	# *************************************************************************************
 	VV.Window.Active.Handle = overviewHandle
+	VV.Window.Regions.Active.Index = VV.Window.Regions.Count + 1
+	scale = (he/512+wi/512)/4
+	#print (str(he)+"; "+str(wi)+"; "+str(scale))
 	if not reuseFocusMap:
-		heightImage = generateHeightImage(VV.Image.Width, VV.Image.Height, cal, cX, cY, cZ)
+		heightImage = generateHeightImage(int(VV.Image.Width/scale), int(VV.Image.Height/scale), cal*scale, cX, cY, cZ)
 		focusMin = float(min(cZ))
 		focusMax = float(max(cZ))
-		displayHeightImage(heightImage, focusMin, focusMax, regionFileName)
+		displayHeightImage(heightImage, focusMin, focusMax, regionFileName, scale, int(VV.Image.Width/scale), int(VV.Image.Height/scale))
 		saveHeightImage(VV.Window.Active.Handle, focusMin, focusMax)
 	else:
 		# load image, get data as CvMat, un-normalize with min and max
@@ -607,10 +612,10 @@ def main():
 		
 		for t in range(VV.Window.Regions.Count):
 				VV.Window.Regions.Active.Index = t+1
-				left = VV.Window.Regions.Active.Left
-				width = VV.Window.Regions.Active.Width
-				top = VV.Window.Regions.Active.Top
-				height = VV.Window.Regions.Active.Height
+				left = int(VV.Window.Regions.Active.Left/scale)
+				width = int(VV.Window.Regions.Active.Width/scale)
+				top = int(VV.Window.Regions.Active.Top/scale)
+				height = int(VV.Window.Regions.Active.Height/scale)
 				imgCentersX.append(left+width/2)		
 				imgCentersY.append(top+height/2)
 				dummy, focusTile = heightImage.GetSubRect(CvRect(left, top, width, height))
