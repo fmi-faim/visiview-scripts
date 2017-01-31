@@ -8,6 +8,11 @@ vvimport('OpenCV')
 import datetime
 import ctypes
 
+
+# *************************************************************************************
+# Positions in the position list are saved as a .stg file opened with a csv reader. 
+# The function returns 3 arrays of coordinates for x, y and z
+# *************************************************************************************
 def parsePositions():
 	tempDir = os.getenv("TEMP")
 	# Save the position list to calculate the focus map
@@ -21,7 +26,7 @@ def parsePositions():
 	coordsX = []
 	coordsY = []
 	coordsZ = []
-	
+
 	for row in reader:
 		if (reader.line_num > 4):
 			coordsX.append(float(row[1]))
@@ -30,12 +35,16 @@ def parsePositions():
 
 	return coordsX, coordsY, coordsZ
 
+
+# *************************************************************************************
+# Different functions for the triangulation
+#
+# *************************************************************************************
 def counterclockwise(A,B,C):
 	"""
 	Tests if three points are listed in a counterclockwise order
 	"""
 	return (C.Y-A.Y)*(B.X-A.X) > (B.Y-A.Y)*(C.X-A.X)
-
 
 def intersects( p0, p1, p2, p3 ) :
 	"""
@@ -59,11 +68,11 @@ def transformTriangles(lines, cal, offsetLeft, offsetTop):
 		lines[i][5] = (lines[i][5] - offsetTop) / cal
 
 def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
-	"""
-	Generates a List of Triangles from a List of points (2D, on X-Y-Level)
-	coordsX, coordsY, coordsZ: X-,Y- and Z-Coords. of the points
-	L,T,W,H: Left,Top,Width,Height of the bounding bx
-	"""
+
+	# Generates a List of Triangles from a List of points (2D, on X-Y-Level)
+	# coordsX, coordsY, coordsZ: X-,Y- and Z-Coords. of the points
+	# L,T,W,H: Left,Top,Width,Height of the bounding bx
+
 	allCoordsX = []
 	allCoordsY = []
 	allCoordsZ = []
@@ -72,7 +81,10 @@ def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
 		allCoordsY.append(coordsY[i]);
 		allCoordsZ.append(coordsZ[i]);
 
-	#Add the Corners of the bounding box
+
+	# Add the corners of the bounding box (or the image) and look for closest point defined in the stage position list.
+	# The corner gets then the same Z as that point.
+	
 	cornersX = [L,L+W,L+W,L]
 	cornersY = [T,T,T+H,T+H]
 	for j in range(len(cornersX)):
@@ -86,8 +98,10 @@ def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
 		allCoordsY.append(cornersY[j]);
 		#Use Z.Coords. of the nearest Point
 		allCoordsZ.append(z);
-		
-	#Generates all possible Lines and sorts them by length
+
+
+	# Generates all possible Lines and sorts them by length
+	
 	points = []
 	for i in range(len(allCoordsX)):
 		for j in range(i+1,len(allCoordsX)):
@@ -108,7 +122,6 @@ def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
 	for i in range(len(points)):
 		index = (len(points) - i)-1
 		for j in range(index):
-
 			o1 = CvPoint2D32f(points[index][1],points[index][2])
 			p1 = CvPoint2D32f(points[index][4],points[index][5])
 			o2 = CvPoint2D32f(points[j][1],points[j][2])
@@ -467,7 +480,7 @@ def restoreRegions(regionFileName):
 # *************************************************************************************
 # *************************************************************************************
 #
-# MAIN
+# 										MAIN
 #
 # *************************************************************************************
 # *************************************************************************************
@@ -478,24 +491,24 @@ def main():
 	# *************************************************************************************
 	user32 = ctypes.windll.user32
 	screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+	
 	overviewHandle = VV.Window.GetHandle.Active
 	VV.Window.Selected.Top = 10
 	VV.Window.Selected.Left = 10
 	VV.Window.Selected.Height = user32.GetSystemMetrics(1)/3
+	
 	cal = VV.Image.Calibration.Value
 	cX, cY, cZ = parsePositions()
 	magnificationRatio = float(VV.Magnification.Calibration.Value)/float(VV.Image.Calibration.Value)
 	bin = VV.Acquire.Binning
 	VV.Acquire.Stage.SeriesType = 'PositionList'
+	
 	reuseFocusMap = False
 	baseName, reuseFocusMap = configDialog()
 	baseDir = VV.Acquire.Sequence.Directory
-	totalTileNumber = 0
-	expTimeAllChannels = 0
-	numberOfPlanes = 1
+	
 	VV.Macro.PrintWindow.Clear()
 	VV.Macro.PrintWindow.IsVisible = True
-
 	
 	# Unselect regions
 	regionFileName = "MultiTileRegion.rgn"
@@ -504,7 +517,6 @@ def main():
 	# will have to be replaced by
 	# VV.Window.Regions.Active.IsValid = False
 
-	
 	
 	# *************************************************************************************
 	# Create an image with the numbers of the regions
@@ -516,6 +528,7 @@ def main():
 	VV.File.Info.Name = "Region Identification in "+baseName
 	he = VV.Image.Height
 	wi = VV.Image.Width
+	zoom = VV.Window.Selected.ZoomPercent
 	imageWithRegion = CvMat(he,wi,MatrixType.U16C1)
 	imageWithRegion.Set(CvScalar(0))
 	restoreRegions(regionFileName)
@@ -523,8 +536,8 @@ def main():
 	for r in range(VV.Window.Regions.Count):
 		VV.Window.Regions.Active.Index = r+1
 		points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
-		font = CvFont(FontFace.Italic,4,1)
-		font.Thickness = 4
+		font = CvFont(FontFace.Italic,int(16/(int(zoom/100*2)+1)),1)
+		font.Thickness = int(16/((int(zoom/100*2)+1)))
 		imageWithRegion.PutText(str(r), CvPoint(CoordX[0]-5,CoordY[0]-5), font, CvScalar(65000))
 		polyLine = Array.CreateInstance(CvPoint, len(CoordX))
 		for i in range(len(CoordX)):
@@ -532,9 +545,9 @@ def main():
 		polyLines[0] = polyLine
 		VV.Window.Regions.Active.Index=r+1
 		if VV.Window.Regions.Active.Type=='PolyLine':
-			imageWithRegion.DrawPolyLine(polyLines, False, CvScalar(30000),6)
+			imageWithRegion.DrawPolyLine(polyLines, False, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
 		else:
-			imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(30000),6)
+			imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
 	VV.Image.WriteFromPointer(imageWithRegion.Data, he, wi)
 	VV.Edit.Regions.ClearAll()
 	VV.Window.Selected.Top = user32.GetSystemMetrics(1)/3 + 20
