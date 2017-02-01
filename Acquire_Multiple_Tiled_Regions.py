@@ -8,6 +8,11 @@ vvimport('OpenCV')
 import datetime
 import ctypes
 
+
+# *************************************************************************************
+# Positions in the position list are saved as a .stg file opened with a csv reader. 
+# The function returns 3 arrays of coordinates for x, y and z
+# *************************************************************************************
 def parsePositions():
 	tempDir = os.getenv("TEMP")
 	# Save the position list to calculate the focus map
@@ -21,7 +26,7 @@ def parsePositions():
 	coordsX = []
 	coordsY = []
 	coordsZ = []
-	
+
 	for row in reader:
 		if (reader.line_num > 4):
 			coordsX.append(float(row[1]))
@@ -30,12 +35,16 @@ def parsePositions():
 
 	return coordsX, coordsY, coordsZ
 
+
+# *************************************************************************************
+# Different functions for the triangulation
+#
+# *************************************************************************************
 def counterclockwise(A,B,C):
 	"""
 	Tests if three points are listed in a counterclockwise order
 	"""
 	return (C.Y-A.Y)*(B.X-A.X) > (B.Y-A.Y)*(C.X-A.X)
-
 
 def intersects( p0, p1, p2, p3 ) :
 	"""
@@ -59,11 +68,11 @@ def transformTriangles(lines, cal, offsetLeft, offsetTop):
 		lines[i][5] = (lines[i][5] - offsetTop) / cal
 
 def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
-	"""
-	Generates a List of Triangles from a List of points (2D, on X-Y-Level)
-	coordsX, coordsY, coordsZ: X-,Y- and Z-Coords. of the points
-	L,T,W,H: Left,Top,Width,Height of the bounding bx
-	"""
+
+	# Generates a List of Triangles from a List of points (2D, on X-Y-Level)
+	# coordsX, coordsY, coordsZ: X-,Y- and Z-Coords. of the points
+	# L,T,W,H: Left,Top,Width,Height of the bounding bx
+
 	allCoordsX = []
 	allCoordsY = []
 	allCoordsZ = []
@@ -72,7 +81,10 @@ def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
 		allCoordsY.append(coordsY[i]);
 		allCoordsZ.append(coordsZ[i]);
 
-	#Add the Corners of the bounding box
+
+	# Add the corners of the bounding box (or the image) and look for closest point defined in the stage position list.
+	# The corner gets then the same Z as that point.
+	
 	cornersX = [L,L+W,L+W,L]
 	cornersY = [T,T,T+H,T+H]
 	for j in range(len(cornersX)):
@@ -86,8 +98,10 @@ def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
 		allCoordsY.append(cornersY[j]);
 		#Use Z.Coords. of the nearest Point
 		allCoordsZ.append(z);
-		
-	#Generates all possible Lines and sorts them by length
+
+
+	# Generates all possible Lines and sorts them by length
+	
 	points = []
 	for i in range(len(allCoordsX)):
 		for j in range(i+1,len(allCoordsX)):
@@ -108,7 +122,6 @@ def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
 	for i in range(len(points)):
 		index = (len(points) - i)-1
 		for j in range(index):
-
 			o1 = CvPoint2D32f(points[index][1],points[index][2])
 			p1 = CvPoint2D32f(points[index][4],points[index][5])
 			o2 = CvPoint2D32f(points[j][1],points[j][2])
@@ -319,10 +332,11 @@ def saveHeightImage(heightImageHandle, focusMin, focusMax):
 def loadHeightImage():
 	focusMin = GetGlobalVar('ch.fmi.VV.focusMin')
 	focusMax = GetGlobalVar('ch.fmi.VV.focusMax')
+	scale = GetGlobalVar('ch.fmi.VV.scale')
 	tempDir = os.getenv("TEMP")
 	VV.File.Open(os.path.join(tempDir, 'TmpFocusImage.tif'))
-	w = VV.Image.Width
-	h = VV.Image.Height
+	w = int(VV.Image.Width/scale)
+	h = int(VV.Image.Height/scale)
 	heightImageRead = CvMat(h,w,MatrixType.U16C1)
 	VV.Image.ReadToPointer(heightImageRead.Data)
 	heightImageFloat = CvMat(h,w,MatrixType.F32C1)
@@ -330,16 +344,17 @@ def loadHeightImage():
 	heightImageDenormalized = (heightImageFloat * (focusMax - focusMin)) / 65535 + CvScalar(focusMin)
 	return heightImageDenormalized
 
-def displayHeightImage(heightImage, focusMin, focusMax, regionFileName):
+def displayHeightImage(heightImage, focusMin, focusMax, regionFileName, scale, heightImageW, heightImageH):
 	heightImageNormalized = heightImage if (focusMax==focusMin) else (heightImage-CvScalar(focusMin))*65535/(focusMax-focusMin)
 
-	heightImageU16 = CvMat(VV.Image.Height, VV.Image.Width, MatrixType.U16C1)
+	heightImageU16 = CvMat(heightImageH, heightImageW, MatrixType.U16C1)
 	heightImageNormalized.Convert(heightImageU16)
 	
-	VV.Edit.Duplicate.Plane()
-	VV.Image.WriteFromPointer(heightImageU16.Data,VV.Image.Height, VV.Image.Width)
-	if regionFileName:
-		VV.Edit.Regions.Load(regionFileName)
+	#VV.Edit.Duplicate.Plane()
+	VV.Process.CreateEmptyPlane('Monochrome16', heightImageW, heightImageH)
+	VV.Image.WriteFromPointer(heightImageU16.Data, heightImageH, heightImageW)
+	#if regionFileName:
+	#	VV.Edit.Regions.Load(regionFileName)
 
 def displayImage(cvImage):
 	VV.Process.CreateEmptyPlane('Monochrome8',VV.Image.Width, VV.Image.Height)
@@ -401,26 +416,67 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 		imgCentersY = []
 
 		# return all possible tiles
-		for col in range(int(nTilesX)):
-			for row in range(int(nTilesY)):
-				tLeft = startLeft + col * (reducedTileWidth)
-				tTop = startTop + row * (reducedTileHeight)
-				currentTile = CvRect(tLeft, tTop, tileWidth, tileHeight)
-				
-				# Crop binary mask to current rectangle
-				dummy, croppedMask = binaryMask.GetSubRect(currentTile)
-				
-				# Measure max value of cropped rectangle
-				minValue = clr.Reference[float]()
-				maxValue = clr.Reference[float]()
-				Cv.MinMaxLoc(croppedMask,minValue,maxValue)
-				
-				# filter tiles according to actual polygon area
-				if(int(maxValue) == 255):
+
+		
+		if VV.Window.Regions.Active.Type == 'PolyLine':
+			for p in range(points-1):
+				dist = math.sqrt(math.pow(CoordX[p+1]-CoordX[p],2)+math.pow(CoordY[p+1]-CoordY[p],2))
+				angleCOS = (CoordX[p+1]-CoordX[p])/dist
+				angleSIN = (CoordY[p+1]-CoordY[p])/dist
+				startX = CoordX[p]-tileWidth/2
+				startY = CoordY[p]-tileWidth/2
+				currentTile = CvRect(startX, startY, tileWidth, tileHeight)
+				jump = False
+				for ti in imgTiles:
+					if (((startX+tileWidth/2>=ti.Left) & (startX+tileWidth/2<=ti.Left+ti.Width)) & ((startY+tileHeight/2>=ti.Top) & (startY+tileHeight/2<=ti.Top+ti.Height))):
+						jump = True
+						startX = startX - reducedTileWidth*angleCOS/3
+						startY = startY - reducedTileWidth*angleSIN/3
+						continue
+				if jump == False:
 					imgTiles.append(currentTile)
 					imgTileRegions.append(regionIndex)
-					imgCentersX.append(tLeft + tileWidth/2)
-					imgCentersY.append(tTop + tileHeight/2)
+					imgCentersX.append(startX)
+					imgCentersY.append(startY)
+
+				for j in range(int(dist/reducedTileWidth)):
+					startX = startX + reducedTileWidth*angleCOS
+					startY = startY + reducedTileWidth*angleSIN
+					jump = False
+					for ti in imgTiles:
+						if (((startX+tileWidth/2>=ti.Left) & (startX+tileWidth/2<=ti.Left+ti.Width)) & ((startY+tileHeight/2>=ti.Top) & (startY+tileHeight/2<=ti.Top+ti.Height))):
+							jump = True
+					if jump == True:
+						continue
+					else:
+						currentTile = CvRect(startX, startY, tileWidth, tileHeight)
+						imgTiles.append(currentTile)
+						imgTileRegions.append(regionIndex)
+						imgCentersX.append(startX)
+						imgCentersY.append(startY)
+
+
+		else:
+			for col in range(int(nTilesX)):
+				for row in range(int(nTilesY)):
+					tLeft = startLeft + col * (reducedTileWidth)
+					tTop = startTop + row * (reducedTileHeight)
+					currentTile = CvRect(tLeft, tTop, tileWidth, tileHeight)
+					
+					# Crop binary mask to current rectangle
+					dummy, croppedMask = binaryMask.GetSubRect(currentTile)
+					
+					# Measure max value of cropped rectangle
+					minValue = clr.Reference[float]()
+					maxValue = clr.Reference[float]()
+					Cv.MinMaxLoc(croppedMask,minValue,maxValue)
+					
+					# filter tiles according to actual polygon area
+					if(int(maxValue) == 255):
+						imgTiles.append(currentTile)
+						imgTileRegions.append(regionIndex)
+						imgCentersX.append(tLeft + tileWidth/2)
+						imgCentersY.append(tTop + tileHeight/2)
 					
 		# Return all results
 		return imgTiles, imgTileRegions, imgCentersX, imgCentersY
@@ -467,7 +523,7 @@ def restoreRegions(regionFileName):
 # *************************************************************************************
 # *************************************************************************************
 #
-# MAIN
+# 										MAIN
 #
 # *************************************************************************************
 # *************************************************************************************
@@ -478,24 +534,24 @@ def main():
 	# *************************************************************************************
 	user32 = ctypes.windll.user32
 	screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+	
 	overviewHandle = VV.Window.GetHandle.Active
 	VV.Window.Selected.Top = 10
 	VV.Window.Selected.Left = 10
 	VV.Window.Selected.Height = user32.GetSystemMetrics(1)/3
+	
 	cal = VV.Image.Calibration.Value
 	cX, cY, cZ = parsePositions()
 	magnificationRatio = float(VV.Magnification.Calibration.Value)/float(VV.Image.Calibration.Value)
 	bin = VV.Acquire.Binning
 	VV.Acquire.Stage.SeriesType = 'PositionList'
+	
 	reuseFocusMap = False
 	baseName, reuseFocusMap = configDialog()
 	baseDir = VV.Acquire.Sequence.Directory
-	totalTileNumber = 0
-	expTimeAllChannels = 0
-	numberOfPlanes = 1
+	
 	VV.Macro.PrintWindow.Clear()
 	VV.Macro.PrintWindow.IsVisible = True
-
 	
 	# Unselect regions
 	regionFileName = "MultiTileRegion.rgn"
@@ -505,17 +561,18 @@ def main():
 	# VV.Window.Regions.Active.IsValid = False
 
 	
-	
 	# *************************************************************************************
 	# Create an image with the numbers of the regions
 	# *************************************************************************************
 	VV.Window.Active.Handle = overviewHandle
 	VV.Window.Selected.Handle = overviewHandle
 	VV.Window.Regions.Active.Index = VV.Window.Regions.Count + 1
-	VV.Process.DuplicatePlane()
-	VV.File.Info.Name = "Region Identification in "+baseName
 	he = VV.Image.Height
 	wi = VV.Image.Width
+	VV.Process.DuplicatePlane()
+	VV.File.Info.Name = "Region Identification in "+baseName
+
+	zoom = VV.Window.Selected.ZoomPercent
 	imageWithRegion = CvMat(he,wi,MatrixType.U16C1)
 	imageWithRegion.Set(CvScalar(0))
 	restoreRegions(regionFileName)
@@ -523,8 +580,8 @@ def main():
 	for r in range(VV.Window.Regions.Count):
 		VV.Window.Regions.Active.Index = r+1
 		points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
-		font = CvFont(FontFace.Italic,4,1)
-		font.Thickness = 4
+		font = CvFont(FontFace.Italic,int(16/(int(zoom/100*2)+1)),1)
+		font.Thickness = int(16/((int(zoom/100*2)+1)))
 		imageWithRegion.PutText(str(r), CvPoint(CoordX[0]-5,CoordY[0]-5), font, CvScalar(65000))
 		polyLine = Array.CreateInstance(CvPoint, len(CoordX))
 		for i in range(len(CoordX)):
@@ -532,9 +589,9 @@ def main():
 		polyLines[0] = polyLine
 		VV.Window.Regions.Active.Index=r+1
 		if VV.Window.Regions.Active.Type=='PolyLine':
-			imageWithRegion.DrawPolyLine(polyLines, False, CvScalar(30000),6)
+			imageWithRegion.DrawPolyLine(polyLines, False, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
 		else:
-			imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(30000),6)
+			imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
 	VV.Image.WriteFromPointer(imageWithRegion.Data, he, wi)
 	VV.Edit.Regions.ClearAll()
 	VV.Window.Selected.Top = user32.GetSystemMetrics(1)/3 + 20
@@ -549,11 +606,14 @@ def main():
 	# Create Focus Map
 	# *************************************************************************************
 	VV.Window.Active.Handle = overviewHandle
+	VV.Window.Regions.Active.Index = VV.Window.Regions.Count + 1
+	scale = (he/512+wi/512)/4
+	SetGlobalVar('ch.fmi.VV.scale', scale)
 	if not reuseFocusMap:
-		heightImage = generateHeightImage(VV.Image.Width, VV.Image.Height, cal, cX, cY, cZ)
+		heightImage = generateHeightImage(int(VV.Image.Width/scale), int(VV.Image.Height/scale), cal*scale, cX, cY, cZ)
 		focusMin = float(min(cZ))
 		focusMax = float(max(cZ))
-		displayHeightImage(heightImage, focusMin, focusMax, regionFileName)
+		displayHeightImage(heightImage, focusMin, focusMax, regionFileName, scale, int(VV.Image.Width/scale), int(VV.Image.Height/scale))
 		saveHeightImage(VV.Window.Active.Handle, focusMin, focusMax)
 	else:
 		# load image, get data as CvMat, un-normalize with min and max
@@ -595,12 +655,16 @@ def main():
 		for t in range(VV.Window.Regions.Count):
 				VV.Window.Regions.Active.Index = t+1
 				left = VV.Window.Regions.Active.Left
+				leftscaled = int(VV.Window.Regions.Active.Left/scale) 
 				width = VV.Window.Regions.Active.Width
+				widthscaled = int(VV.Window.Regions.Active.Width/scale)
 				top = VV.Window.Regions.Active.Top
+				topscaled = int(VV.Window.Regions.Active.Top/scale)
 				height = VV.Window.Regions.Active.Height
+				heightscaled = int(VV.Window.Regions.Active.Height/scale)
 				imgCentersX.append(left+width/2)		
 				imgCentersY.append(top+height/2)
-				dummy, focusTile = heightImage.GetSubRect(CvRect(left, top, width, height))
+				dummy, focusTile = heightImage.GetSubRect(CvRect(leftscaled, topscaled, widthscaled, heightscaled))
 				imgFocusPoints.append(focusTile.Avg().Val0)
 
 		numberTilesEachRegion.append(VV.Window.Regions.Count)		
@@ -650,3 +714,4 @@ except KeyboardInterrupt:
 	pass
 #except StandardError:
 #	pass
+
