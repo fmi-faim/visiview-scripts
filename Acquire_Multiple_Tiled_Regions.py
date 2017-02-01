@@ -332,10 +332,11 @@ def saveHeightImage(heightImageHandle, focusMin, focusMax):
 def loadHeightImage():
 	focusMin = GetGlobalVar('ch.fmi.VV.focusMin')
 	focusMax = GetGlobalVar('ch.fmi.VV.focusMax')
+	scale = GetGlobalVar('ch.fmi.VV.scale')
 	tempDir = os.getenv("TEMP")
 	VV.File.Open(os.path.join(tempDir, 'TmpFocusImage.tif'))
-	w = VV.Image.Width
-	h = VV.Image.Height
+	w = int(VV.Image.Width/scale)
+	h = int(VV.Image.Height/scale)
 	heightImageRead = CvMat(h,w,MatrixType.U16C1)
 	VV.Image.ReadToPointer(heightImageRead.Data)
 	heightImageFloat = CvMat(h,w,MatrixType.F32C1)
@@ -350,7 +351,7 @@ def displayHeightImage(heightImage, focusMin, focusMax, regionFileName, scale, h
 	heightImageNormalized.Convert(heightImageU16)
 	
 	#VV.Edit.Duplicate.Plane()
-	VV.Process.CreateEmptyPlane('Monochrome16', heightImageH, heightImageW)
+	VV.Process.CreateEmptyPlane('Monochrome16', heightImageW, heightImageH)
 	VV.Image.WriteFromPointer(heightImageU16.Data, heightImageH, heightImageW)
 	#if regionFileName:
 	#	VV.Edit.Regions.Load(regionFileName)
@@ -415,26 +416,67 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 		imgCentersY = []
 
 		# return all possible tiles
-		for col in range(int(nTilesX)):
-			for row in range(int(nTilesY)):
-				tLeft = startLeft + col * (reducedTileWidth)
-				tTop = startTop + row * (reducedTileHeight)
-				currentTile = CvRect(tLeft, tTop, tileWidth, tileHeight)
-				
-				# Crop binary mask to current rectangle
-				dummy, croppedMask = binaryMask.GetSubRect(currentTile)
-				
-				# Measure max value of cropped rectangle
-				minValue = clr.Reference[float]()
-				maxValue = clr.Reference[float]()
-				Cv.MinMaxLoc(croppedMask,minValue,maxValue)
-				
-				# filter tiles according to actual polygon area
-				if(int(maxValue) == 255):
+
+		
+		if VV.Window.Regions.Active.Type == 'PolyLine':
+			for p in range(points-1):
+				dist = math.sqrt(math.pow(CoordX[p+1]-CoordX[p],2)+math.pow(CoordY[p+1]-CoordY[p],2))
+				angleCOS = (CoordX[p+1]-CoordX[p])/dist
+				angleSIN = (CoordY[p+1]-CoordY[p])/dist
+				startX = CoordX[p]-tileWidth/2
+				startY = CoordY[p]-tileWidth/2
+				currentTile = CvRect(startX, startY, tileWidth, tileHeight)
+				jump = False
+				for ti in imgTiles:
+					if (((startX+tileWidth/2>=ti.Left) & (startX+tileWidth/2<=ti.Left+ti.Width)) & ((startY+tileHeight/2>=ti.Top) & (startY+tileHeight/2<=ti.Top+ti.Height))):
+						jump = True
+						startX = startX - reducedTileWidth*angleCOS/3
+						startY = startY - reducedTileWidth*angleSIN/3
+						continue
+				if jump == False:
 					imgTiles.append(currentTile)
 					imgTileRegions.append(regionIndex)
-					imgCentersX.append(tLeft + tileWidth/2)
-					imgCentersY.append(tTop + tileHeight/2)
+					imgCentersX.append(startX)
+					imgCentersY.append(startY)
+
+				for j in range(int(dist/reducedTileWidth)):
+					startX = startX + reducedTileWidth*angleCOS
+					startY = startY + reducedTileWidth*angleSIN
+					jump = False
+					for ti in imgTiles:
+						if (((startX+tileWidth/2>=ti.Left) & (startX+tileWidth/2<=ti.Left+ti.Width)) & ((startY+tileHeight/2>=ti.Top) & (startY+tileHeight/2<=ti.Top+ti.Height))):
+							jump = True
+					if jump == True:
+						continue
+					else:
+						currentTile = CvRect(startX, startY, tileWidth, tileHeight)
+						imgTiles.append(currentTile)
+						imgTileRegions.append(regionIndex)
+						imgCentersX.append(startX)
+						imgCentersY.append(startY)
+
+
+		else:
+			for col in range(int(nTilesX)):
+				for row in range(int(nTilesY)):
+					tLeft = startLeft + col * (reducedTileWidth)
+					tTop = startTop + row * (reducedTileHeight)
+					currentTile = CvRect(tLeft, tTop, tileWidth, tileHeight)
+					
+					# Crop binary mask to current rectangle
+					dummy, croppedMask = binaryMask.GetSubRect(currentTile)
+					
+					# Measure max value of cropped rectangle
+					minValue = clr.Reference[float]()
+					maxValue = clr.Reference[float]()
+					Cv.MinMaxLoc(croppedMask,minValue,maxValue)
+					
+					# filter tiles according to actual polygon area
+					if(int(maxValue) == 255):
+						imgTiles.append(currentTile)
+						imgTileRegions.append(regionIndex)
+						imgCentersX.append(tLeft + tileWidth/2)
+						imgCentersY.append(tTop + tileHeight/2)
 					
 		# Return all results
 		return imgTiles, imgTileRegions, imgCentersX, imgCentersY
@@ -566,7 +608,7 @@ def main():
 	VV.Window.Active.Handle = overviewHandle
 	VV.Window.Regions.Active.Index = VV.Window.Regions.Count + 1
 	scale = (he/512+wi/512)/4
-	#print (str(he)+"; "+str(wi)+"; "+str(scale))
+	SetGlobalVar('ch.fmi.VV.scale', scale)
 	if not reuseFocusMap:
 		heightImage = generateHeightImage(int(VV.Image.Width/scale), int(VV.Image.Height/scale), cal*scale, cX, cY, cZ)
 		focusMin = float(min(cZ))
@@ -612,13 +654,17 @@ def main():
 		
 		for t in range(VV.Window.Regions.Count):
 				VV.Window.Regions.Active.Index = t+1
-				left = int(VV.Window.Regions.Active.Left/scale)
-				width = int(VV.Window.Regions.Active.Width/scale)
-				top = int(VV.Window.Regions.Active.Top/scale)
-				height = int(VV.Window.Regions.Active.Height/scale)
+				left = VV.Window.Regions.Active.Left
+				leftscaled = int(VV.Window.Regions.Active.Left/scale) 
+				width = VV.Window.Regions.Active.Width
+				widthscaled = int(VV.Window.Regions.Active.Width/scale)
+				top = VV.Window.Regions.Active.Top
+				topscaled = int(VV.Window.Regions.Active.Top/scale)
+				height = VV.Window.Regions.Active.Height
+				heightscaled = int(VV.Window.Regions.Active.Height/scale)
 				imgCentersX.append(left+width/2)		
 				imgCentersY.append(top+height/2)
-				dummy, focusTile = heightImage.GetSubRect(CvRect(left, top, width, height))
+				dummy, focusTile = heightImage.GetSubRect(CvRect(leftscaled, topscaled, widthscaled, heightscaled))
 				imgFocusPoints.append(focusTile.Avg().Val0)
 
 		numberTilesEachRegion.append(VV.Window.Regions.Count)		
@@ -668,3 +714,4 @@ except KeyboardInterrupt:
 	pass
 #except StandardError:
 #	pass
+
