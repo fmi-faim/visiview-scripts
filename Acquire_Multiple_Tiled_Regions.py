@@ -607,7 +607,7 @@ def main():
 	# *************************************************************************************
 	VV.Window.Active.Handle = overviewHandle
 	VV.Window.Regions.Active.Index = VV.Window.Regions.Count + 1
-	scale = (he/512+wi/512)/4
+	scale = int((he/512+wi/512)/4)+1
 	SetGlobalVar('ch.fmi.VV.scale', scale)
 	if not reuseFocusMap:
 		heightImage = generateHeightImage(int(VV.Image.Width/scale), int(VV.Image.Height/scale), cal*scale, cX, cY, cZ)
