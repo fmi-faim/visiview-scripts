@@ -502,7 +502,7 @@ def configDialog():
 	tempDir = os.getenv("TEMP")
 	doReUse = False
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
-		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", True)
+		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)
 	VV.Macro.InputDialog.Show()
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
 		doReUse = reusefocusmap
