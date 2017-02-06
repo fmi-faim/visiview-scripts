@@ -685,7 +685,13 @@ def main():
 			timeFirstRegion = datetime.datetime.now()
 			diff = timeFirstRegion - timeStart
 			timeAcquisitionFirstRegion = diff.total_seconds()
-			timePerTile = timeAcquisitionFirstRegion / numberTilesEachRegion[0]
+			if numberTilesEachRegion[0] != 0:
+				timePerTile = timeAcquisitionFirstRegion / numberTilesEachRegion[0]
+			else:
+				timePerTile = timeAcquisitionFirstRegion
+				print ("!!!!!!!!!")
+				print ("Times could not be calculated precisely since there is no tile in region 0")
+				print ("!!!!!!!!!")				
 			print ("\n______________________\n")
 			for k in range(len(numberTilesEachRegion)):
 				print ("Time to acquire region "+str(k)+" (containing "+str(numberTilesEachRegion[k])+" tiles) = "+str(int(timePerTile*numberTilesEachRegion[k]))+" sec")
