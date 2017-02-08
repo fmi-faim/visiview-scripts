@@ -332,11 +332,10 @@ def saveHeightImage(heightImageHandle, focusMin, focusMax):
 def loadHeightImage():
 	focusMin = GetGlobalVar('ch.fmi.VV.focusMin')
 	focusMax = GetGlobalVar('ch.fmi.VV.focusMax')
-	scale = GetGlobalVar('ch.fmi.VV.scale')
 	tempDir = os.getenv("TEMP")
 	VV.File.Open(os.path.join(tempDir, 'TmpFocusImage.tif'))
-	w = int(VV.Image.Width/scale)
-	h = int(VV.Image.Height/scale)
+	w = VV.Image.Width
+	h = VV.Image.Height
 	heightImageRead = CvMat(h,w,MatrixType.U16C1)
 	VV.Image.ReadToPointer(heightImageRead.Data)
 	heightImageFloat = CvMat(h,w,MatrixType.F32C1)
