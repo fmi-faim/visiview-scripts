@@ -496,23 +496,58 @@ def saveTileList(roiNumber, baseDir, baseName, imgCentersX, imgCentersY, imgFocu
 	return(stageListFile)
 
 def configDialog():
-	VV.Macro.InputDialog.Initialize("Confirm Basename", True)
+	VV.Macro.InputDialog.Initialize("Experiment parameters", True)
 	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
 	tempDir = os.getenv("TEMP")
 	doReUse = False
+	doReUse2 = False
+	condition = False
+	listSTGfiles = []
+	
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
 		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)
+	
+	onlyFiles = [f for f in os.listdir(VV.Acquire.Sequence.Directory) if os.path.isfile(os.path.join(VV.Acquire.Sequence.Directory, f))]
+	for f in onlyFiles:
+		if (f.split(".")[1:][0] == "stg"):
+			listSTGfiles.append(f)
+			condition = True
+	if (condition == True):
+		VV.Macro.InputDialog.AddBoolVariable("Re-use Saved Lists of Positions?", "reusePositions", False)
 	VV.Macro.InputDialog.Show()
+	
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
 		doReUse = reusefocusmap
+	if condition == True:	
+		doReUse2 = reusePositions
 	VV.Acquire.Sequence.BaseName = basename
-	return (basename[:-1] if basename.endswith('_') else basename), doReUse
+	return (basename[:-1] if basename.endswith('_') else basename), doReUse, doReUse2, listSTGfiles
 
+
+def stagePosDialog(listSTGfiles):
+	list = []
+	VV.Macro.InputDialog.Initialize("Select Stage Position Lists", True)
+	choice = Array.CreateInstance(bool, len(listSTGfiles))
+	for i, l in enumerate(listSTGfiles):
+		mystring = "choice"+str(i)
+		VV.Macro.InputDialog.AddBoolVariable(l, mystring, False)
+	VV.Macro.InputDialog.Show()
+
+	for i, l in enumerate(listSTGfiles):
+		mystring = "choice"+str(i)
+		if  mystring == True:
+			print (choice[i])
+			list.append(l)
+
+	return list
+	
+	
 def restoreFocusPositions():
 	tempDir = os.getenv("TEMP")
 	posList = tempDir + "\\PositionList.stg"
 	if os.path.isfile(posList):
 		VV.Acquire.Stage.PositionList.Load(posList)
+
 
 def restoreRegions(regionFileName):
 	VV.Edit.Regions.Load(regionFileName)
@@ -533,6 +568,8 @@ def main():
 	# *************************************************************************************
 	user32 = ctypes.windll.user32
 	screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+	VV.Macro.PrintWindow.Clear()
+	VV.Macro.PrintWindow.IsVisible = True
 	
 	overviewHandle = VV.Window.GetHandle.Active
 	VV.Window.Selected.Top = 10
@@ -546,11 +583,13 @@ def main():
 	VV.Acquire.Stage.SeriesType = 'PositionList'
 	
 	reuseFocusMap = False
-	baseName, reuseFocusMap = configDialog()
+	reusePositions = False
+	listSTGfiles = []
 	baseDir = VV.Acquire.Sequence.Directory
 	
-	VV.Macro.PrintWindow.Clear()
-	VV.Macro.PrintWindow.IsVisible = True
+	baseName, reuseFocusMap, reusePositions, listSTGfiles = configDialog()
+	#listSTGfiles = stagePosDialog(listSTGfiles)
+	print (listSTGfiles)
 	
 	# Unselect regions
 	regionFileName = "MultiTileRegion.rgn"
