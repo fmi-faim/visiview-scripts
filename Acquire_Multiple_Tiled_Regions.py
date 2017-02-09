@@ -414,8 +414,6 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 		imgCentersY = []
 
 		# return all possible tiles
-
-		
 		if VV.Window.Regions.Active.Type == 'PolyLine':
 			for p in range(points-1):
 				dist = math.sqrt(math.pow(CoordX[p+1]-CoordX[p],2)+math.pow(CoordY[p+1]-CoordY[p],2))
@@ -452,8 +450,6 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 						imgTileRegions.append(regionIndex)
 						imgCentersX.append(startX)
 						imgCentersY.append(startY)
-
-
 		else:
 			for col in range(int(nTilesX)):
 				for row in range(int(nTilesY)):
@@ -505,7 +501,7 @@ def configDialog():
 	
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
 		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)
-	
+		
 	onlyFiles = [f for f in os.listdir(VV.Acquire.Sequence.Directory) if os.path.isfile(os.path.join(VV.Acquire.Sequence.Directory, f))]
 	for f in onlyFiles:
 		if (f.split(".")[1:][0] == "stg"):
@@ -524,21 +520,55 @@ def configDialog():
 
 
 def stagePosDialog(listSTGfiles):
-	list = []
-	VV.Macro.InputDialog.Initialize("Select Stage Position Lists", True)
-	choice = Array.CreateInstance(bool, len(listSTGfiles))
-	for i, l in enumerate(listSTGfiles):
-		mystring = "choice"+str(i)
-		VV.Macro.InputDialog.AddBoolVariable(l, mystring, False)
+	
+	myList = []
+	
+	VV.Macro.InputDialog.Initialize("Select position lists", True)
+	for i in range(len(listSTGfiles)):
+		VV.Macro.InputDialog.AddBoolVariable(listSTGfiles[i], "var"+str(i), False)
 	VV.Macro.InputDialog.Show()
-
-	for i, l in enumerate(listSTGfiles):
-		mystring = "choice"+str(i)
-		if  mystring == True:
-			print (choice[i])
-			list.append(l)
-
-	return list
+	
+	if (len(listSTGfiles)>=1):
+		if (var0 == True):
+			myList.append(listSTGfiles[0])
+	if (len(listSTGfiles)>=2):
+		if (var1 == True):
+			myList.append(listSTGfiles[1])
+	if (len(listSTGfiles)>=3):	
+		if (var2 == True):
+			myList.append(listSTGfiles[2])
+	if (len(listSTGfiles)>=4):	
+		if (var3 == True):
+			myList.append(listSTGfiles[3])
+	if (len(listSTGfiles)>=5):	
+		if (var4 == True):
+			myList.append(listSTGfiles[4])
+	if (len(listSTGfiles)>=6):	
+		if (var5 == True):
+			myList.append(listSTGfiles[5])
+	if (len(listSTGfiles)>=7):	
+		if (var6 == True):
+			myList.append(listSTGfiles[6])
+	if (len(listSTGfiles)>=8):	
+		if (var7 == True):
+			myList.append(listSTGfiles[7])			
+	if (len(listSTGfiles)>=9):	
+		if (var8 == True):
+			myList.append(listSTGfiles[8])
+	if (len(listSTGfiles)>=10):	
+		if (var9 == True):
+			myList.append(listSTGfiles[9])
+	if (len(listSTGfiles)>=11):	
+		if (var10 == True):
+			myList.append(listSTGfiles[10])
+	if (len(listSTGfiles)>=12):	
+		if (var11 == True):
+			myList.append(listSTGfiles[11])
+	if (len(listSTGfiles)>=13):	
+		if (var12 == True):
+			myList.append(listSTGfiles[12])
+			
+	return myList
 	
 	
 def restoreFocusPositions():
@@ -587,7 +617,8 @@ def main():
 	baseDir = VV.Acquire.Sequence.Directory
 	
 	baseName, reuseFocusMap, reusePositions, listSTGfiles = configDialog()
-	#listSTGfiles = stagePosDialog(listSTGfiles)
+	listSTGfiles = stagePosDialog(listSTGfiles)
+	print(listSTGfiles)
 
 	overviewName = VV.File.Info.NameOnly
 	if not overviewName.endswith("_OVERVIEW.tif"):
