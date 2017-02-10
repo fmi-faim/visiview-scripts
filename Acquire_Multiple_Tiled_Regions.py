@@ -490,6 +490,7 @@ def saveTileList(roiNumber, baseDir, baseName, imgCentersX, imgCentersY, imgFocu
 	#sleep(2)
 	return(stageListFile)
 
+
 def configDialog():
 	VV.Macro.InputDialog.Initialize("Experiment parameters", True)
 	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
@@ -519,65 +520,18 @@ def configDialog():
 	return (basename[:-1] if basename.endswith('_') else basename), doReUse, doReUse2, listSTGfiles
 
 
-def stagePosDialog(stgFileList):
-
+def stagePosDialog(listSTGfiles):
 	myList = []
-	
-#	myVar = Array.CreateInstance(str, len(listSTGfiles))
-#	VV.Macro.InputDialog.Initialize("Select position lists", True)
-#	for i in range(len(listSTGfiles)):
-#		VV.Macro.InputDialog.AddBoolVariable(listSTGfiles[i], "myVar["+str(i)+"]", False)
-#	VV.Macro.InputDialog.Show()
-#
-#	for i in range(len(listSTGfiles)):
-#		if myVar[i]:
-#			myList.append(listSTGfiles[i])
-
+	global myVar
+	myVar = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 	VV.Macro.InputDialog.Initialize("Select position lists", True)
-	for i in range(len(stgFileList)):
-		VV.Macro.InputDialog.AddBoolVariable(stgFileList[i], "var"+str(i), False)
+	for i in range(len(listSTGfiles)):
+		VV.Macro.InputDialog.AddBoolVariable(listSTGfiles[i], "myVar["+str(i)+"]", False)
 	VV.Macro.InputDialog.Show()
-	
-	if (len(stgFileList)>=1):
-		if (var0 == True):
-			myList.append(stgFileList[0])
-	if (len(stgFileList)>=2):
-		if (var1 == True):
-			myList.append(stgFileList[1])
-	if (len(stgFileList)>=3):	
-		if (var2 == True):
-			myList.append(stgFileList[2])
-	if (len(stgFileList)>=4):	
-		if (var3 == True):
-			myList.append(stgFileList[3])
-	if (len(stgFileList)>=5):	
-		if (var4 == True):
-			myList.append(stgFileList[4])
-	if (len(stgFileList)>=6):	
-		if (var5 == True):
-			myList.append(stgFileList[5])
-	if (len(stgFileList)>=7):	
-		if (var6 == True):
-			myList.append(stgFileList[6])
-	if (len(stgFileList)>=8):	
-		if (var7 == True):
-			myList.append(stgFileList[7])			
-	if (len(stgFileList)>=9):	
-		if (var8 == True):
-			myList.append(stgFileList[8])
-	if (len(stgFileList)>=10):	
-		if (var9 == True):
-			myList.append(stgFileList[9])
-	if (len(stgFileList)>=11):	
-		if (var10 == True):
-			myList.append(stgFileList[10])
-	if (len(stgFileList)>=12):	
-		if (var11 == True):
-			myList.append(stgFileList[11])
-	if (len(stgFileList)>=13):	
-		if (var12 == True):
-			myList.append(stgFileList[12])
-	
+
+	for i in range(len(listSTGfiles)):
+		if myVar[i]:
+			myList.append(listSTGfiles[i])
 	return myList
 	
 	
