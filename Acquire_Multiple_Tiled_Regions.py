@@ -32,7 +32,6 @@ def parsePositions():
 			coordsX.append(float(row[1]))
 			coordsY.append(float(row[2]))
 			coordsZ.append(float(row[3]))
-
 	return coordsX, coordsY, coordsZ
 
 
@@ -589,7 +588,12 @@ def main():
 	
 	baseName, reuseFocusMap, reusePositions, listSTGfiles = configDialog()
 	#listSTGfiles = stagePosDialog(listSTGfiles)
-	print (listSTGfiles)
+
+	overviewName = VV.File.Info.NameOnly
+	if not overviewName.endswith("_OVERVIEW.tif"):
+		overviewName = os.path.join(baseDir, baseName+'_OVERVIEW.tif')
+		VV.File.SaveAs(overviewName, True)
+		
 	
 	# Unselect regions
 	regionFileName = "MultiTileRegion.rgn"
