@@ -544,6 +544,10 @@ def restoreFocusPositions():
 
 def restoreRegions(regionFileName):
 	VV.Edit.Regions.Load(regionFileName)
+	
+def reopenOverviewImage():
+	path = GetGlobalVar('ch.fmi.VV.lastOverview')
+	return VV.File.Open(path)
 
 
 
@@ -588,10 +592,11 @@ def main():
 		stgFileList = stagePosDialog(stgFileList)
 	else:
 		stgFileList = []
-		overviewName = VV.File.Info.NameOnly
+		overviewName = VV.File.Info.Name
 		if not overviewName.endswith("_OVERVIEW.tif"):
 			overviewName = os.path.join(baseDir, baseName+'_OVERVIEW.tif')
 			VV.File.SaveAs(overviewName, True)
+		SetGlobalVar('ch.fmi.VV.lastOverview', overviewName)
 	
 		# Unselect regions
 		regionFileName = "MultiTileRegion.rgn"
@@ -640,6 +645,7 @@ def main():
 
 		path = os.path.join(baseDir, baseName+'_regions.tif')
 		VV.File.SaveAs(path, True)
+		regionImageHandle = VV.Window.GetHandle.Active
 
 
 		# *************************************************************************************
@@ -658,6 +664,7 @@ def main():
 		else:
 			# load image, get data as CvMat, un-normalize with min and max
 			heightImage = loadHeightImage()
+		focusImageHandle = VV.Window.Selected.Handle
 		VV.Window.Selected.Top = user32.GetSystemMetrics(1)/3 +60
 		VV.Window.Selected.Left = 30
 		VV.Window.Selected.Width=user32.GetSystemMetrics(0)/4
@@ -716,6 +723,18 @@ def main():
 	timeStart = datetime.datetime.now()
 	print (timeStart.strftime("Experiment started at %H:%M:%S"))
 	
+	# Close Overview Image
+	VV.Window.Selected.Handle = overviewHandle
+	VV.Window.Selected.Close(False)
+
+	# Close Region ID Image
+	VV.Window.Selected.Handle = regionImageHandle
+	VV.Window.Selected.Close(False)
+	
+	# Close Focus Image
+	VV.Window.Selected.Handle = focusImageHandle
+	VV.Window.Selected.Close(False)
+
 	numberTilesEachRegion = []
 	for stgFile in (stgFileList):
 		index = stgFile.find("_nTiles-")+8
@@ -745,15 +764,19 @@ def main():
 
 		VV.Acquire.Stage.PositionList.Load(os.path.join(baseDir,stgFile))
 		m = re.match(r'.*\\([^\\]+).stg', os.path.join(baseDir,stgFile))
-		index = m.group(1).find("_")	
-		VV.Acquire.Sequence.BaseName = baseName + m.group(1)[index:]
-		print ("\nNow acquiring " + baseName + m.group(1)[index:]+"...")
+		baseName = m.group(1)
+		VV.Acquire.Sequence.BaseName = baseName
+		print ("\nNow acquiring " + baseName +"...")
 		VV.Acquire.Sequence.Start()
 		VV.Macro.Control.WaitFor('VV.Acquire.IsRunning', "==", False)
+		VV.Window.Selected.Handle = VV.Window.Active.Handle
+		VV.Window.Selected.Close(False)
 		# close image windows after acquisition
+		# selected image = last image name, then close
 		
 	restoreFocusPositions()
 	if not reusePositions:
+		VV.Window.Selected.Handle = overviewHandle
 		restoreRegions(regionFileName)
 
 
@@ -761,6 +784,11 @@ try:
 	main()
 except KeyboardInterrupt:
 	restoreFocusPositions()
+	handle = reopenOverviewImage()
+	#VV.Macro.Control.Delay(100, 'ms')
+	regionFileName = "MultiTileRegion.rgn"
+	VV.Window.Selected.Handle = VV.Window.GetHandle.Active
+	restoreRegions(regionFileName)
 	pass
 #except StandardError:
 #	pass
