@@ -8,6 +8,24 @@ vvimport('OpenCV')
 import datetime
 import ctypes
 
+# *************************************************************************************
+# Sends a mail to the user about calculated times 
+# 
+# *************************************************************************************
+def SendEmail(mailAdresse, mailObject, mailText):
+	import smtplib
+	from email.mime.text import MIMEText
+	try:
+		msg = MIMEText(mailText)
+		msg['Subject'] = mailObject
+		msg['From'] = "W1-noreply@fmi.ch"
+		msg['To'] = mailAdresse
+	
+		s = smtplib.SMTP('cas.fmi.ch')
+		s.sendmail("laurent.gelman@fmi.ch", mailAdresse, msg.as_string())
+		s.quit()
+	except:
+		print("Could not send e-mail")
 
 # *************************************************************************************
 # Positions in the position list are saved as a .stg file opened with a csv reader. 
@@ -494,6 +512,7 @@ def saveTileList(roiNumber, baseDir, baseName, imgCentersX, imgCentersY, imgFocu
 def configDialog():
 	VV.Macro.InputDialog.Initialize("Experiment parameters", True)
 	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
+	VV.Macro.InputDialog.AddStringVariable("E-mail address", "mailAdresse", "@fmi.ch")
 	tempDir = os.getenv("TEMP")
 	doReUse = False
 	doReUse2 = False
@@ -517,7 +536,7 @@ def configDialog():
 	if condition == True:	
 		doReUse2 = reusePositions
 
-	return (basename[:-1] if basename.endswith('_') else basename), doReUse, doReUse2, listSTGfiles
+	return (basename[:-1] if basename.endswith('_') else basename), doReUse, doReUse2, listSTGfiles, mailAdresse
 
 
 def stagePosDialog(listSTGfiles):
@@ -584,8 +603,11 @@ def main():
 
 	baseDir = VV.Acquire.Sequence.Directory
 	stgFileList = []
+	mailText = ""
+	mailAdresse = ""
+	mailObject = ""
 	
-	baseName, reuseFocusMap, reusePositions, stgFileList = configDialog()
+	baseName, reuseFocusMap, reusePositions, stgFileList, mailAdresse = configDialog()
 	VV.Acquire.Sequence.BaseName = baseName
 	
 	if reusePositions:
@@ -712,8 +734,10 @@ def main():
 					imgFocusPoints.append(focusTile.Avg().Val0)
 		
 			stgFileList.append(saveTileList(r, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints))
-
-		
+			
+	if not reusePositions:
+		VV.Window.Selected.Handle = overviewHandle
+		restoreRegions(regionFileName)
 		
 	# *************************************************************************************
 	# Start Acquisition
@@ -723,17 +747,25 @@ def main():
 	timeStart = datetime.datetime.now()
 	print (timeStart.strftime("Experiment started at %H:%M:%S"))
 	
+	"""
 	# Close Overview Image
 	VV.Window.Selected.Handle = overviewHandle
 	VV.Window.Selected.Close(False)
-
-	# Close Region ID Image
-	VV.Window.Selected.Handle = regionImageHandle
-	VV.Window.Selected.Close(False)
+	"""
 	
+	# Close Region ID Image
+	try:
+		VV.Window.Selected.Handle = regionImageHandle
+		VV.Window.Selected.Close(False)
+	except:
+		pass
+
 	# Close Focus Image
-	VV.Window.Selected.Handle = focusImageHandle
-	VV.Window.Selected.Close(False)
+	try:
+		VV.Window.Selected.Handle = focusImageHandle
+		VV.Window.Selected.Close(False)
+	except:
+		pass
 
 	numberTilesEachRegion = []
 	for stgFile in (stgFileList):
@@ -754,12 +786,18 @@ def main():
 				print ("Times could not be calculated since number of tiles is not known")		
 			print ("\n______________________\n")
 			for k in range(len(numberTilesEachRegion)):
-				print ("Time to acquire region "+str(k)+" (containing "+str(numberTilesEachRegion[k])+" tiles) = "+str(int(timePerTile*numberTilesEachRegion[k]))+" sec")
+				myString1 = "Time to acquire region "+str(k)+" (containing "+str(numberTilesEachRegion[k])+" tiles) = "+str(int(timePerTile*numberTilesEachRegion[k]))+" sec"
+				print(myString1)
 				timeStart = timeStart + diff/numberTilesEachRegion[0]*numberTilesEachRegion[k]
+				myString2 = ""
 				if k>0:
-					print ("  => Region "+str(k)+" will finish at "+timeStart.strftime("%H:%M:%S"))
+					myString2 = ("  => Region "+str(k)+" will finish at "+timeStart.strftime("%H:%M:%S"))
+					print(myString2)
+				mailText=mailText+myString1+"\n"+myString2+"\n"	
 			print ("______________________\n")
-					
+			SendEmail(mailAdresse, "Information on scanning time", mailText)
+			
+			
 		# Acquire tiles		
 
 		VV.Acquire.Stage.PositionList.Load(os.path.join(baseDir,stgFile))
@@ -773,11 +811,9 @@ def main():
 		VV.Window.Selected.Close(False)
 		# close image windows after acquisition
 		# selected image = last image name, then close
-		
+	
+	SendEmail(mailAdresse, "Acquisition finished", "All regions have been acquired")
 	restoreFocusPositions()
-	if not reusePositions:
-		VV.Window.Selected.Handle = overviewHandle
-		restoreRegions(regionFileName)
 
 
 try:
