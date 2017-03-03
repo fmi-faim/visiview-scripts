@@ -568,7 +568,28 @@ def reopenOverviewImage():
 	path = GetGlobalVar('ch.fmi.VV.lastOverview')
 	return VV.File.Open(path)
 
+def writeTileConfig(baseDir, stgFile, baseName, cal):
+	# parse stg file
+	f = open(stgFile)
+	tcFile = open(os.path.join(baseDir, baseName + "_TileConfiguration.txt"), "w")
+	dim = "3" if VV.Acquire.Z.Series else "2"
 
+	tcFile.write("# Define the number of dimensions we are working on\n")
+	tcFile.write("dim = " + dim + "\n")
+	tcFile.write("multiseries = true\n")
+	tcFile.write("# Define the image coordinates\n")
+
+	reader = csv.reader(f)
+	for i in range(4):
+		reader.next()
+	j=0
+	for row in reader:
+		lineString = baseName + ".nd; " + str(j) + "; (" + str(float(row[1])/cal) + " ," + str(float(row[2])/cal)
+		lineString += ", 0)\n" if dim == "3" else ")\n"
+		tcFile.write(lineString)
+		j += 1
+	f.close()
+	tcFile.close()
 
 # *************************************************************************************
 # *************************************************************************************
@@ -774,7 +795,9 @@ def main():
 		#read from name the number of tiles in each region formated as 3digit number
 
 	for count, stgFile in enumerate(stgFileList):
-		# Estimate time for acquisition of tiles
+		"""
+		Estimate time for acquisition of tiles
+		"""
 		if count == 1:
 			timeFirstRegion = datetime.datetime.now()
 			diff = timeFirstRegion - timeStart
@@ -797,9 +820,9 @@ def main():
 			print ("______________________\n")
 			SendEmail(mailAdresse, "Information on scanning time", mailText)
 			
-			
+		"""	
 		# Acquire tiles		
-
+		"""
 		VV.Acquire.Stage.PositionList.Load(os.path.join(baseDir,stgFile))
 		m = re.match(r'.*\\([^\\]+).stg', os.path.join(baseDir,stgFile))
 		baseName = m.group(1)
@@ -808,10 +831,15 @@ def main():
 		VV.Acquire.Sequence.Start()
 		VV.Macro.Control.WaitFor('VV.Acquire.IsRunning', "==", False)
 		VV.Window.Selected.Handle = VV.Window.Active.Handle
+
+		ndBaseName = VV.File.Info.NameOnly
+		ndBaseName = ndBaseName[0:ndBaseName.rfind('_')]
+		writeTileConfig(baseDir, stgFile, ndBaseName, cal)
+
 		VV.Window.Selected.Close(False)
 		# close image windows after acquisition
 		# selected image = last image name, then close
-	
+
 	SendEmail(mailAdresse, "Acquisition finished", "All regions have been acquired")
 	restoreFocusPositions()
 
