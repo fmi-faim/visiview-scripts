@@ -9,6 +9,22 @@ import datetime
 import ctypes
 
 # *************************************************************************************
+# get User full name
+# 
+# *************************************************************************************
+def get_display_name():
+    GetUserNameEx = ctypes.windll.secur32.GetUserNameExW
+    NameDisplay = 3
+
+    size = ctypes.pointer(ctypes.c_ulong(0))
+    GetUserNameEx(NameDisplay, None, size)
+
+    nameBuffer = ctypes.create_unicode_buffer(size.contents.value)
+    GetUserNameEx(NameDisplay, nameBuffer, size)
+    return nameBuffer.value
+
+
+# *************************************************************************************
 # Sends a mail to the user about calculated times 
 # 
 # *************************************************************************************
@@ -510,9 +526,12 @@ def saveTileList(roiNumber, baseDir, baseName, imgCentersX, imgCentersY, imgFocu
 
 
 def configDialog():
+	userName = get_display_name().split(",")
+	emailAdresse = userName[1][1:]+"."+userName[0]+"@fmi.ch"
+    
 	VV.Macro.InputDialog.Initialize("Experiment parameters", True)
 	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
-	VV.Macro.InputDialog.AddStringVariable("E-mail address", "mailAdresse", "@fmi.ch")
+	VV.Macro.InputDialog.AddStringVariable("E-mail address", "mailAdresse", emailAdresse)
 	tempDir = os.getenv("TEMP")
 	doReUse = False
 	doReUse2 = False
