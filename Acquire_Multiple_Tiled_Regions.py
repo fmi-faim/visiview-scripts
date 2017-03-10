@@ -853,7 +853,8 @@ def main():
 
 		ndBaseName = VV.File.Info.NameOnly
 		ndBaseName = ndBaseName[0:ndBaseName.rfind('_')]
-		writeTileConfig(baseDir, stgFile, ndBaseName, cal)
+		newCalibration = VV.Magnification.Calibration.Value
+		writeTileConfig(baseDir, stgFile, ndBaseName, newCalibration * bin)
 
 		VV.Window.Selected.Close(False)
 		# close image windows after acquisition
