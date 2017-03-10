@@ -589,7 +589,7 @@ def reopenOverviewImage():
 
 def writeTileConfig(baseDir, stgFile, baseName, cal):
 	# parse stg file
-	f = open(stgFile)
+	f = open(os.path.join(baseDir,stgFile))
 	tcFile = open(os.path.join(baseDir, baseName + "_TileConfiguration.txt"), "w")
 	dim = "3" if VV.Acquire.Z.Series else "2"
 
