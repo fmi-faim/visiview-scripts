@@ -787,6 +787,8 @@ def main():
 	timeStart = datetime.datetime.now()
 	print (timeStart.strftime("Experiment started at %H:%M:%S"))
 	
+	VV.Macro.MessageBox.ShowAndWait("Please cheack parameters in the Acquire Window (i.e. z-stack and multi-wavelengths options)", "Check...", False)
+	
 	"""
 	# Close Overview Image
 	VV.Window.Selected.Handle = overviewHandle
