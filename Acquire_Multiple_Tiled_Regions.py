@@ -1,7 +1,6 @@
 # VisiView Macro
 import clr, math, sys
 import csv, os, re
-from pprint import pprint
 from System import Array
 sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\Examples\Image Access\OpenCV\Library")
 vvimport('OpenCV')
