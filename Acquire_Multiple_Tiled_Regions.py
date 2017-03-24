@@ -525,8 +525,11 @@ def saveTileList(roiNumber, baseDir, baseName, imgCentersX, imgCentersY, imgFocu
 
 
 def configDialog():
-	userName = get_display_name().split(",")
-	emailAdresse = userName[1][1:]+"."+userName[0]+"@fmi.ch"
+	try:
+		userName = get_display_name().split(",")
+		emailAdresse = userName[1][1:]+"."+userName[0]+"@fmi.ch"
+	except:
+		emailAdresse = "faim@fmi.ch"
     
 	VV.Macro.InputDialog.Initialize("Experiment parameters", True)
 	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
