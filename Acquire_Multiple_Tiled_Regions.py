@@ -531,23 +531,25 @@ def configDialog():
 	except:
 		emailAdresse = "faim@fmi.ch"
     
-	VV.Macro.InputDialog.Initialize("Experiment parameters", True)
-	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
-	VV.Macro.InputDialog.AddStringVariable("E-mail address", "mailAdresse", emailAdresse)
 	tempDir = os.getenv("TEMP")
 	doReUse = False
 	doReUse2 = False
 	condition = False
 	listSTGfiles = []
-	
-	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
-		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)
-		
+	baseN = VV.Acquire.Sequence.BaseName
+	if baseN.endswith('_'):
+		baseN = baseN[:-1]
 	onlyFiles = [f for f in os.listdir(VV.Acquire.Sequence.Directory) if os.path.isfile(os.path.join(VV.Acquire.Sequence.Directory, f))]
 	for f in onlyFiles:
-		if (f.split(".")[1:][0] == "stg"):
+		if (f.split(".")[1:][0] == "stg") & (f.split(".")[0].startswith(baseN)==1):
 			listSTGfiles.append(f)
 			condition = True
+			
+	VV.Macro.InputDialog.Initialize("Experiment parameters", True)
+	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
+	VV.Macro.InputDialog.AddStringVariable("E-mail address", "mailAdresse", emailAdresse)
+	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
+		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)	
 	if (condition == True):
 		VV.Macro.InputDialog.AddBoolVariable("Re-use Saved Lists of Positions?", "reusePositions", False)
 	VV.Macro.InputDialog.Show()
