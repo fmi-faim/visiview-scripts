@@ -31,7 +31,7 @@ VV.Macro.PrintWindow.IsVisible = True
 now = datetime.datetime.now()
 print str(now)
 
-laserName = 'Toptica488_Laser488'
+laserName = 'Laser 640_Laser 640'
 
 path = r'C:\ProgramData\Visitron Systems\VisiView\TopticaLog.txt'
 text_file = open(path, "aw")
