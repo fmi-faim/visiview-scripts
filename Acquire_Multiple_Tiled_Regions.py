@@ -690,6 +690,14 @@ def main():
 		polyLines = Array.CreateInstance(Array[CvPoint], 1)
 		for r in range(VV.Window.Regions.Count):
 			VV.Window.Regions.Active.Index = r+1
+			
+			#Test size of region and delete it if too small. this is to avoid empty position lists afterwards
+			regionSize = VV.Window.Regions.Active.Width * VV.Window.Regions.Active.Height
+			if regionSize <= 100:
+				VV.Window.Regions.Active.Remove()
+				VV.Edit.Regions.Save(regionFileName)
+				continue
+				
 			points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
 			font = CvFont(FontFace.Italic,int(16/(int(zoom/100*2)+1)),1)
 			font.Thickness = int(16/((int(zoom/100*2)+1)))
