@@ -667,9 +667,9 @@ def main():
 		# Unselect regions
 		regionFileName = "MultiTileRegion.rgn"
 		VV.Edit.Regions.Save(regionFileName)
-		VV.Window.Regions.Active.Index = VV.Window.Regions.Count + 1
+		# VV.Window.Regions.Active.Index = VV.Window.Regions.Count + 1
 		# will have to be replaced by
-		# VV.Window.Regions.Active.IsValid = False
+		VV.Window.Regions.Active.IsValid = False
 
 	
 		# *************************************************************************************
@@ -677,7 +677,7 @@ def main():
 		# *************************************************************************************
 		VV.Window.Active.Handle = overviewHandle
 		VV.Window.Selected.Handle = overviewHandle
-		VV.Window.Regions.Active.Index = VV.Window.Regions.Count + 1
+		VV.Window.Regions.Active.IsValid = False
 		he = VV.Image.Height
 		wi = VV.Image.Width
 		VV.Process.DuplicatePlane()
@@ -726,7 +726,7 @@ def main():
 		# Create Focus Map
 		# *************************************************************************************
 		VV.Window.Active.Handle = overviewHandle
-		VV.Window.Regions.Active.Index = VV.Window.Regions.Count + 1
+		VV.Window.Regions.Active.IsValid = False
 		scale = int((he/512+wi/512)/4)+1
 		SetGlobalVar('ch.fmi.VV.scale', scale)
 		if not reuseFocusMap:
