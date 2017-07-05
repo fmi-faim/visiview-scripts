@@ -545,13 +545,14 @@ def configDialog():
 			listSTGfiles.append(f)
 			condition = True
 			
-	VV.Macro.InputDialog.Initialize("Experiment parameters", True)
+	VV.Macro.InputDialog.Initialize("Experiment parameters.    (C)2017. J. Eglinger & L. Gelman, FAIM - FMI", True)
 	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
 	VV.Macro.InputDialog.AddStringVariable("E-mail address", "mailAdresse", emailAdresse)
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
 		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)	
 	if (condition == True):
 		VV.Macro.InputDialog.AddBoolVariable("Re-use Saved Lists of Positions?", "reusePositions", False)
+	VV.Macro.InputDialog.Width=450
 	VV.Macro.InputDialog.Show()
 	
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
