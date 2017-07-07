@@ -436,8 +436,11 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 		overhangY = (nTilesY * (reducedTileHeight) + overlapHeight) - regionH
 		
 		startLeft = regionLeft - (overhangX/2)
+		if startLeft <= 0:
+			startLeft = 0
 		startTop = regionTop - (overhangY/2)	
-
+		if startTop <= 0:
+			startTop = 0
 		binaryMaskRectangles = binaryMask.Clone()
 		# Create container lists for results
 		# TODO replace by better structure (dict?)
