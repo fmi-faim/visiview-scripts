@@ -11,7 +11,7 @@ try:
 	VV.Macro.MessageBox.ShowAndWait("Are you sure you want to delete all positions?", "Warning", CancelButton)
 	VV.Acquire.Stage.PositionList.Save(os.path.join(tempDir,"LastList.stp"))
 	VV.Acquire.Stage.PositionList.Load(path)
-except:
+except StandardError:
 	pass
 
 	
