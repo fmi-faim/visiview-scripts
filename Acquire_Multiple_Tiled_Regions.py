@@ -3,6 +3,7 @@ import clr, math, sys
 import csv, os, re
 from System import Array
 sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\Examples\Image Access\OpenCV\Library")
+sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\FMI-git")
 vvimport('OpenCV')
 import datetime
 import ctypes
@@ -483,11 +484,13 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 						imgCentersX.append(startX)
 						imgCentersY.append(startY)
 		else:
+			imageWidth = binaryMask.Width
+			imageHeight = binaryMask.Height
 			for col in range(int(nTilesX)):
 				for row in range(int(nTilesY)):
 					tLeft = startLeft + col * (reducedTileWidth)
 					tTop = startTop + row * (reducedTileHeight)
-					currentTile = CvRect(tLeft, tTop, tileWidth, tileHeight)
+					currentTile = CvRect(tLeft, tTop, min(tileWidth, imageWidth-tLeft), min(tileHeight, imageHeight-tTop))
 					
 					# Crop binary mask to current rectangle
 					dummy, croppedMask = binaryMask.GetSubRect(currentTile)
