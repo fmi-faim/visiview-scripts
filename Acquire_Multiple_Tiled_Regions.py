@@ -7,41 +7,8 @@ sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\FMI-git"
 vvimport('OpenCV')
 import datetime
 import ctypes
+import EmailToolbox
 
-# *************************************************************************************
-# get User full name
-# 
-# *************************************************************************************
-def get_display_name():
-    GetUserNameEx = ctypes.windll.secur32.GetUserNameExW
-    NameDisplay = 3
-
-    size = ctypes.pointer(ctypes.c_ulong(0))
-    GetUserNameEx(NameDisplay, None, size)
-
-    nameBuffer = ctypes.create_unicode_buffer(size.contents.value)
-    GetUserNameEx(NameDisplay, nameBuffer, size)
-    return nameBuffer.value
-
-
-# *************************************************************************************
-# Sends a mail to the user about calculated times 
-# 
-# *************************************************************************************
-def SendEmail(mailAdresse, mailObject, mailText):
-	import smtplib
-	from email.mime.text import MIMEText
-	try:
-		msg = MIMEText(mailText)
-		msg['Subject'] = mailObject
-		msg['From'] = "W1-noreply@fmi.ch"
-		msg['To'] = mailAdresse
-	
-		s = smtplib.SMTP('cas.fmi.ch')
-		s.sendmail("laurent.gelman@fmi.ch", mailAdresse, msg.as_string())
-		s.quit()
-	except:
-		print("Could not send e-mail")
 
 # *************************************************************************************
 # Positions in the position list are saved as a .stg file opened with a csv reader. 
@@ -527,12 +494,6 @@ def saveTileList(roiNumber, baseDir, baseName, imgCentersX, imgCentersY, imgFocu
 
 
 def configDialog():
-	try:
-		userName = get_display_name().split(",")
-		emailAdresse = userName[1][1:]+"."+userName[0]+"@fmi.ch"
-	except:
-		emailAdresse = "faim@fmi.ch"
-    
 	tempDir = os.getenv("TEMP")
 	doReUse = False
 	doReUse2 = False
@@ -546,7 +507,7 @@ def configDialog():
 		if (f.split(".")[1:][0] == "stg") & (f.split(".")[0].startswith(baseN)==1):
 			listSTGfiles.append(f)
 			condition = True
-			
+	emailAdresse = EmailToolbox.createEmailAddress(EmailToolbox.getUserLogged())
 	VV.Macro.InputDialog.Initialize("Experiment parameters.    (C)2017. J. Eglinger & L. Gelman, FAIM - FMI", True)
 	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
 	VV.Macro.InputDialog.AddStringVariable("E-mail address", "mailAdresse", emailAdresse)
@@ -652,7 +613,6 @@ def main():
 	stgFileList = []
 	mailText = ""
 	mailAdresse = ""
-	mailObject = ""
 	
 	baseName, reuseFocusMap, reusePositions, stgFileList, mailAdresse = configDialog()
 	VV.Acquire.Sequence.BaseName = baseName
@@ -855,7 +815,12 @@ def main():
 					print(myString2)
 				mailText=mailText+myString1+"\n"+myString2+"\n"	
 			print ("______________________\n")
-			SendEmail(mailAdresse, "Information on scanning time", mailText)
+			
+			InfoMail = EmailToolbox.Email()
+			InfoMail.destin = mailAdresse
+			InfoMail.title = "Acquisition Schedule"
+			InfoMail.message = mailText
+			InfoMail.send()
 			
 		"""	
 		# Acquire tiles		
@@ -878,7 +843,12 @@ def main():
 		# close image windows after acquisition
 		# selected image = last image name, then close
 
-	SendEmail(mailAdresse, "Acquisition finished", "All regions have been acquired")
+	FinalMail = EmailToolbox.Email()
+	FinalMail.destin = mailAdresse
+	FinalMail.title = "Acquisition finished"
+	FinalMail.message = "All regions have been acquired"
+	FinalMail.send()
+
 	restoreFocusPositions()
 
 
