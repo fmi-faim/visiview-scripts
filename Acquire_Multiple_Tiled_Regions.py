@@ -12,7 +12,7 @@ import EmailToolbox
 
 
 # *************************************************************************************
-# Positions in the position list are saved as a .stg file opened with a csv reader. 
+# Positions in the position list are saved as a .stg file opened with a csv reader.
 # The function returns 3 arrays of coordinates for x, y and z
 # *************************************************************************************
 def parsePositions():
@@ -51,13 +51,13 @@ def intersects( p0, p1, p2, p3 ) :
 	"""
 	Tests if a Line (p0,p1) and another (p2,p3) intersects
 	"""
-	if p0.X == p2.X and p0.Y == p2.Y: 
+	if p0.X == p2.X and p0.Y == p2.Y:
 		return False
-	if p1.X == p2.X and p1.Y == p2.Y: 
+	if p1.X == p2.X and p1.Y == p2.Y:
 		return False
-	if p0.X == p3.X and p0.Y == p3.Y: 
+	if p0.X == p3.X and p0.Y == p3.Y:
 		return False
-	if p1.X == p3.X and p1.Y == p3.Y: 
+	if p1.X == p3.X and p1.Y == p3.Y:
 		return False
 	return counterclockwise(p0,p2,p3) != counterclockwise(p1,p2,p3) and counterclockwise(p0,p1,p2) != counterclockwise(p0,p1,p3)
 
@@ -85,7 +85,7 @@ def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
 
 	# Add the corners of the bounding box (or the image) and look for closest point defined in the stage position list.
 	# The corner gets then the same Z as that point.
-	
+
 	cornersX = [L,L+W,L+W,L]
 	cornersY = [T,T,T+H,T+H]
 	for j in range(len(cornersX)):
@@ -102,7 +102,7 @@ def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
 
 
 	# Generates all possible Lines and sorts them by length
-	
+
 	points = []
 	for i in range(len(allCoordsX)):
 		for j in range(i+1,len(allCoordsX)):
@@ -368,7 +368,7 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 		overlap = 0.1
 		
 		# Draw current region into mask
-		#get all information of the active region 
+		#get all information of the active region
 		points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
 		
 		# Clear mask (reset to 0)
@@ -513,7 +513,7 @@ def configDialog():
 	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
 	VV.Macro.InputDialog.AddStringVariable("E-mail address", "mailAdresse", emailAdresse)
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
-		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)	
+		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)
 	if (condition == True):
 		VV.Macro.InputDialog.AddBoolVariable("Re-use Saved Lists of Positions?", "reusePositions", False)
 	VV.Macro.InputDialog.Width=450
@@ -521,7 +521,7 @@ def configDialog():
 	
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
 		doReUse = reusefocusmap
-	if condition == True:	
+	if condition == True:
 		doReUse2 = reusePositions
 
 	return (basename[:-1] if basename.endswith('_') else basename), doReUse, doReUse2, listSTGfiles, mailAdresse
@@ -668,7 +668,7 @@ def main():
 			imageWithRegion.PutText(str(r), CvPoint(CoordX[0]-5,CoordY[0]-5), font, CvScalar(65000))
 			polyLine = Array.CreateInstance(CvPoint, len(CoordX))
 			for i in range(len(CoordX)):
-				polyLine[i] = CvPoint(CoordX[i],CoordY[i])	
+				polyLine[i] = CvPoint(CoordX[i],CoordY[i])
 			polyLines[0] = polyLine
 			VV.Window.Regions.Active.Index=r+1
 			if VV.Window.Regions.Active.Type=='PolyLine':
@@ -728,7 +728,7 @@ def main():
 		
 			# *************************************************************************************
 			# Adjust calculated tiles
-			# *************************************************************************************		
+			# *************************************************************************************
 
 			imgFocusPoints = []
 			imgCentersX = []
@@ -737,14 +737,14 @@ def main():
 			for t in range(VV.Window.Regions.Count):
 					VV.Window.Regions.Active.Index = t+1
 					left = VV.Window.Regions.Active.Left
-					leftscaled = int(VV.Window.Regions.Active.Left/scale) 
+					leftscaled = int(VV.Window.Regions.Active.Left/scale)
 					width = VV.Window.Regions.Active.Width
 					widthscaled = int(VV.Window.Regions.Active.Width/scale)
 					top = VV.Window.Regions.Active.Top
 					topscaled = int(VV.Window.Regions.Active.Top/scale)
 					height = VV.Window.Regions.Active.Height
 					heightscaled = int(VV.Window.Regions.Active.Height/scale)
-					imgCentersX.append(left+width/2)		
+					imgCentersX.append(left+width/2)
 					imgCentersY.append(top+height/2)
 					dummy, focusTile = heightImage.GetSubRect(CvRect(leftscaled, topscaled, widthscaled, heightscaled))
 					imgFocusPoints.append(focusTile.Avg().Val0)
@@ -754,10 +754,10 @@ def main():
 	if not reusePositions:
 		VV.Window.Selected.Handle = overviewHandle
 		restoreRegions(regionFileName)
-		
+
 	# *************************************************************************************
 	# Start Acquisition
-	# *************************************************************************************	
+	# *************************************************************************************
 
 	VV.Window.Active.Handle = overviewHandle
 	timeStart = datetime.datetime.now()
@@ -803,7 +803,7 @@ def main():
 				timePerTile = timeAcquisitionFirstRegion / numberTilesEachRegion[0]
 			else:
 				timePerTile = timeAcquisitionFirstRegion
-				print ("Times could not be calculated since number of tiles is not known")		
+				print ("Times could not be calculated since number of tiles is not known")
 			print ("\n______________________\n")
 			for k in range(len(numberTilesEachRegion)):
 				myString1 = "Time to acquire region "+str(k)+" (containing "+str(numberTilesEachRegion[k])+" tiles) = "+str(int(timePerTile*numberTilesEachRegion[k]))+" sec"
@@ -814,14 +814,14 @@ def main():
 				if k>0:
 					myString2 = ("  => Region "+str(k)+" will finish at "+timeStart.strftime("%H:%M:%S"))
 					print(myString2)
-				mailText=mailText+myString1+"\n"+myString2+"\n"	
+				mailText=mailText+myString1+"\n"+myString2+"\n"
 			print ("______________________\n")
 			
 			InfoMail = EmailToolbox.Email(destin = mailAdresse, title = "Acquisition Schedule", message = mailText)
 			InfoMail.send()
-			
-		"""	
-		# Acquire tiles		
+
+		"""
+		# Acquire tiles
 		"""
 		VV.Acquire.Stage.PositionList.Load(os.path.join(baseDir,stgFile))
 		m = re.match(r'.*\\([^\\]+).stg', os.path.join(baseDir,stgFile))
