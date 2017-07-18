@@ -816,10 +816,7 @@ def main():
 				mailText=mailText+myString1+"\n"+myString2+"\n"	
 			print ("______________________\n")
 			
-			InfoMail = EmailToolbox.Email()
-			InfoMail.destin = mailAdresse
-			InfoMail.title = "Acquisition Schedule"
-			InfoMail.message = mailText
+			InfoMail = EmailToolbox.Email(destin = mailAdresse, title = "Acquisition Schedule", message = mailText)
 			InfoMail.send()
 			
 		"""	
@@ -843,10 +840,7 @@ def main():
 		# close image windows after acquisition
 		# selected image = last image name, then close
 
-	FinalMail = EmailToolbox.Email()
-	FinalMail.destin = mailAdresse
-	FinalMail.title = "Acquisition finished"
-	FinalMail.message = "All regions have been acquired"
+	FinalMail = EmailToolbox.Email(destin = mailAdresse, title = "Acquisition finished", message = "All regions have been acquired")
 	FinalMail.send()
 
 	restoreFocusPositions()
