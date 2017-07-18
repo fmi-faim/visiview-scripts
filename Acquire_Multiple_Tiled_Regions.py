@@ -807,7 +807,7 @@ def main():
 			for k in range(len(numberTilesEachRegion)):
 				myString1 = "Time to acquire region "+str(k)+" (containing "+str(numberTilesEachRegion[k])+" tiles) = "+str(int(timePerTile*numberTilesEachRegion[k]))+" sec"
 				if numberTilesEachRegion[0] == 0:
-					numberTilesEachRegion[0] == 1
+					numberTilesEachRegion[0] = 1
 				timeStart = timeStart + diff/numberTilesEachRegion[0]*numberTilesEachRegion[k]
 				myString2 = ""
 				if k>0:
