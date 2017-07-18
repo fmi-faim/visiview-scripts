@@ -16,11 +16,11 @@ class Email:
         4. The message itself (or report)
     """
 
-    def __init__(self):
-        self.exped = defaultSender
-        self.destin = defaultRecipient
-        self.title = "Report"
-        self.message = "Nothing to Report"
+    def __init__(self, exped = defaultSender, destin = defaultRecipient, title = "Report", message = "Nothing to Report"):
+        self.exped = exped
+        self.destin = destin
+        self.title = title
+        self.message = message
         
     def send(self):
         import smtplib
