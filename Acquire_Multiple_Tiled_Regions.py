@@ -792,7 +792,7 @@ def main():
 
 	for count, stgFile in enumerate(stgFileList):
 		"""
-		Estimate time for acquisition of tiles
+		Estimate time for acquisition of all regions based on time elapsed for region 0
 		"""
 		if count == 1:
 			timeFirstRegion = datetime.datetime.now()
