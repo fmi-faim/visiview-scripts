@@ -4,7 +4,7 @@ import csv, os, re
 from System import Array
 sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\Examples\Image Access\OpenCV\Library")
 sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\FMI-git")
-sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\FMI-git\FaimCommonUtils")
+sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\FMI-git\faim-common-utils")
 vvimport('OpenCV')
 import datetime
 import ctypes
