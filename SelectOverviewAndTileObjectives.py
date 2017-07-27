@@ -1,6 +1,6 @@
 # VisiView Macro
-
 magList = VV.Magnification.List
+magList = sorted(magList)
 SetGlobalVar("ovobj","")
 SetGlobalVar("tileobj","")
 
