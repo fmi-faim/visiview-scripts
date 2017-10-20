@@ -12,7 +12,7 @@ import EmailToolbox
 
 
 # *************************************************************************************
-# Positions in the position list are saved as a .stg file opened with a csv reader. 
+# Positions in the position list are saved as a .stg file opened with a csv reader.
 # The function returns 3 arrays of coordinates for x, y and z
 # *************************************************************************************
 def parsePositions():
@@ -24,7 +24,6 @@ def parsePositions():
 	# Read the position list from file
 	fo = open(tempDir + "\\PositionList.stg")
 	reader = csv.reader(fo)
-	stagePositions = []
 	coordsX = []
 	coordsY = []
 	coordsZ = []
@@ -51,22 +50,22 @@ def intersects( p0, p1, p2, p3 ) :
 	"""
 	Tests if a Line (p0,p1) and another (p2,p3) intersects
 	"""
-	if p0.X == p2.X and p0.Y == p2.Y: 
+	if p0.X == p2.X and p0.Y == p2.Y:
 		return False
-	if p1.X == p2.X and p1.Y == p2.Y: 
+	if p1.X == p2.X and p1.Y == p2.Y:
 		return False
-	if p0.X == p3.X and p0.Y == p3.Y: 
+	if p0.X == p3.X and p0.Y == p3.Y:
 		return False
-	if p1.X == p3.X and p1.Y == p3.Y: 
+	if p1.X == p3.X and p1.Y == p3.Y:
 		return False
 	return counterclockwise(p0,p2,p3) != counterclockwise(p1,p2,p3) and counterclockwise(p0,p1,p2) != counterclockwise(p0,p1,p3)
 
 def transformTriangles(lines, cal, offsetLeft, offsetTop):
-	for i in range(len(lines)):
-		lines[i][1] = (lines[i][1] - offsetLeft) / cal
-		lines[i][2] = (lines[i][2] - offsetTop) / cal
-		lines[i][4] = (lines[i][4] - offsetLeft) / cal
-		lines[i][5] = (lines[i][5] - offsetTop) / cal
+	for i, line in enumerate(lines):
+		lines[i][1] = (line[1] - offsetLeft) / cal
+		lines[i][2] = (line[2] - offsetTop) / cal
+		lines[i][4] = (line[4] - offsetLeft) / cal
+		lines[i][5] = (line[5] - offsetTop) / cal
 
 def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
 
@@ -77,7 +76,7 @@ def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
 	allCoordsX = []
 	allCoordsY = []
 	allCoordsZ = []
-	for i in range(len(coordsX)):
+	for i, _ in enumerate(coordsX):
 		allCoordsX.append(coordsX[i]);
 		allCoordsY.append(coordsY[i]);
 		allCoordsZ.append(coordsZ[i]);
@@ -85,12 +84,12 @@ def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
 
 	# Add the corners of the bounding box (or the image) and look for closest point defined in the stage position list.
 	# The corner gets then the same Z as that point.
-	
+
 	cornersX = [L,L+W,L+W,L]
 	cornersY = [T,T,T+H,T+H]
-	for j in range(len(cornersX)):
+	for j, _ in enumerate(cornersX):
 		minDist = sys.maxint
-		for i in range(len(allCoordsX)):
+		for i, _ in enumerate(allCoordsX):
 			dist = math.sqrt(math.pow(cornersX[j]-allCoordsX[i],2)+math.pow(cornersY[j]-allCoordsY[i],2))
 			if dist < minDist:
 				minDist = dist
@@ -102,14 +101,14 @@ def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
 
 
 	# Generates all possible Lines and sorts them by length
-	
+
 	points = []
 	for i in range(len(allCoordsX)):
 		for j in range(i+1,len(allCoordsX)):
 			if i == j: continue
 			dist = math.sqrt(math.pow(allCoordsX[i]-allCoordsX[j],2)+math.pow(allCoordsY[i]-allCoordsY[j],2))
 			insertIndex = -1
-			for k in range(len(points)):
+			for k, _ in enumerate(points):
 				if points[k][0] > dist:
 					insertIndex = k
 					break
@@ -132,12 +131,12 @@ def buildTriangles(coordsX, coordsY, coordsZ,L,T,W,H):
 				break
 	
 	delPoints = []
-	for i in range(len(delIndizes)):
-		delPoints.append(points[delIndizes[i]])
-		del points[delIndizes[i]]
+	for delIndex in delIndizes:
+		delPoints.append(points[delIndex])
+		del points[delIndex]
 		
 	#add all deleted lines that do not intersect with a remaining line (needed for circular intersection)
-	for i in range(len(delPoints)):
+	for i, _ in enumerate(delPoints):
 		j = len(delIndizes) - i -1
 		intersection = False
 		for k in range(len(points)):
@@ -181,20 +180,20 @@ def BiLinearInterpolationTrianglesByPoint(x,y,z,lines,img):
 
 	#sort the remaining lines by angle
 	sortedEndPoints = []
-	for i in range(len(endPoints)):
-		if endPoints[i][1] == y and endPoints[i][0] < x: m = maxInt
-		elif endPoints[i][1] == y and endPoints[i][0] > x: m = minInt
-		elif endPoints[i][0] == x: m = 0
-		else: m = float(endPoints[i][0] - x)/float(endPoints[i][1] - y)
+	for endPoint in endPoints:
+		if endPoint[1] == y and endPoint[0] < x: m = maxInt
+		elif endPoint[1] == y and endPoint[0] > x: m = minInt
+		elif endPoint[0] == x: m = 0
+		else: m = float(endPoint[0] - x)/float(endPoint[1] - y)
 		insertIndex = -1
 		for k in range(len(sortedEndPoints)):
 			if sortedEndPoints[k][0] < m:
 				insertIndex = k
 				break
 		if insertIndex == -1:
-			sortedEndPoints.append([m,endPoints[i][0],endPoints[i][1],endPoints[i][2]])
+			sortedEndPoints.append([m,endPoint[0],endPoint[1],endPoint[2]])
 		else:
-			sortedEndPoints.insert(k,[m,endPoints[i][0],endPoints[i][1],endPoints[i][2]])
+			sortedEndPoints.insert(k,[m,endPoint[0],endPoint[1],endPoint[2]])
 
 	for i in range(len(sortedEndPoints)-1):
 		BiLinearInterpolationTriangle(x,y,z,sortedEndPoints[i][1],sortedEndPoints[i][2],sortedEndPoints[i][3],sortedEndPoints[i+1][1],sortedEndPoints[i+1][2],sortedEndPoints[i+1][3],img)
@@ -361,14 +360,14 @@ def displayImage(cvImage):
 	VV.Image.WriteFromPointer(cvImage.Data, VV.Image.Width, VV.Image.Height)
 
 
-def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, heightImage):
+def getAcquisitionTiles(regionIndex, binaryMask, binning, magnificationRatio, heightImage):
 		# Select next region
 		VV.Window.Regions.Active.Index = regionIndex
 		# TODO make user-definable
 		overlap = 0.1
 		
 		# Draw current region into mask
-		#get all information of the active region 
+		#get all information of the active region
 		points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
 		
 		# Clear mask (reset to 0)
@@ -376,7 +375,7 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 		
 		#Region as polyline
 		polygonPoints = Array.CreateInstance(CvPoint, len(CoordX))
-		for i in range(len(CoordX)):
+		for i, _ in enumerate(CoordX):
 			polygonPoints[i] = CvPoint(CoordX[i],CoordY[i])
 		polyLines = Array.CreateInstance(Array[CvPoint], 1)
 		polyLines[0] = polygonPoints
@@ -391,8 +390,8 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 		regionLeft = VV.Window.Regions.Active.Left
 		regionTop = VV.Window.Regions.Active.Top
 
-		tileWidth = float(VV.Acquire.XDimension) * bin * magnificationRatio
-		tileHeight = float(VV.Acquire.YDimension) * bin * magnificationRatio
+		tileWidth = float(VV.Acquire.XDimension) * binning * magnificationRatio
+		tileHeight = float(VV.Acquire.YDimension) * binning * magnificationRatio
 		overlapWidth = tileWidth * overlap
 		overlapHeight = tileHeight * overlap
 		reducedTileWidth = tileWidth-overlapWidth
@@ -406,7 +405,6 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 		
 		startLeft = max(regionLeft - (overhangX/2), 0)
 		startTop = max(regionTop - (overhangY/2), 0)
-		binaryMaskRectangles = binaryMask.Clone()
 		# Create container lists for results
 		# TODO replace by better structure (dict?)
 		imgTiles = []
@@ -436,7 +434,7 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 					imgCentersX.append(startX)
 					imgCentersY.append(startY)
 
-				for j in range(int(dist/reducedTileWidth)):
+				for _ in range(int(dist/reducedTileWidth)):
 					startX = startX + reducedTileWidth*angleCOS
 					startY = startY + reducedTileWidth*angleSIN
 					jump = False
@@ -485,7 +483,7 @@ def saveTileList(roiNumber, baseDir, baseName, imgCentersX, imgCentersY, imgFocu
 	target.write("\"Stage Memory List\", Version 5.0\n0, 0, 0, 0, 0, 0, 0, \"microns\", \"microns\"\n0\n"+str(len(imgCentersX))+"\n")
 	# csvWriter.writeRow("Stage Memory List", )
 
-	for i in range(len(imgCentersX)):
+	for i, _ in enumerate(imgCentersX):
 		x,y = VV.File.ConvertImageCoordinatesToStageCoordinates(imgCentersX[i], imgCentersY[i])
 		text = "\"Position"+str(i+1)+"\", "+("%.3f" % x)+", "+("%.3f" % y)+", "+("%.3f" % imgFocusPoints[i])+", 0, 0, FALSE, -9999, TRUE, TRUE, 0, -1, \"\"\n"
 		target.write(text)
@@ -513,7 +511,7 @@ def configDialog():
 	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
 	VV.Macro.InputDialog.AddStringVariable("E-mail address", "mailAdresse", emailAdresse)
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
-		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)	
+		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)
 	if (condition == True):
 		VV.Macro.InputDialog.AddBoolVariable("Re-use Saved Lists of Positions?", "reusePositions", False)
 	VV.Macro.InputDialog.Width=450
@@ -521,7 +519,7 @@ def configDialog():
 	
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
 		doReUse = reusefocusmap
-	if condition == True:	
+	if condition == True:
 		doReUse2 = reusePositions
 
 	return (basename[:-1] if basename.endswith('_') else basename), doReUse, doReUse2, listSTGfiles, mailAdresse
@@ -532,8 +530,8 @@ def stagePosDialog(listSTGfiles):
 	global myVar
 	myVar = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 	VV.Macro.InputDialog.Initialize("Select position lists", True)
-	for i in range(len(listSTGfiles)):
-		VV.Macro.InputDialog.AddBoolVariable(listSTGfiles[i], "myVar["+str(i)+"]", False)
+	for i, stg in enumerate(listSTGfiles):
+		VV.Macro.InputDialog.AddBoolVariable(stg, "myVar["+str(i)+"]", False)
 	VV.Macro.InputDialog.Show()
 
 	for i in range(len(listSTGfiles)):
@@ -568,7 +566,7 @@ def writeTileConfig(baseDir, stgFile, baseName, cal):
 	tcFile.write("# Define the image coordinates\n")
 
 	reader = csv.reader(f)
-	for i in range(4):
+	for _ in range(4):
 		reader.next()
 	j=0
 	for row in reader:
@@ -592,7 +590,6 @@ def main():
 	# Initialization
 	# *************************************************************************************
 	user32 = ctypes.windll.user32
-	screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 	VV.Macro.PrintWindow.Clear()
 	VV.Macro.PrintWindow.IsVisible = True
 	
@@ -604,7 +601,7 @@ def main():
 	cal = VV.Image.Calibration.Value
 	cX, cY, cZ = parsePositions()
 	magnificationRatio = float(VV.Magnification.Calibration.Value)/float(VV.Image.Calibration.Value)
-	bin = VV.Acquire.Binning
+	binValue = VV.Acquire.Binning
 	VV.Acquire.Stage.SeriesType = 'PositionList'
 	
 	reuseFocusMap = False
@@ -662,13 +659,13 @@ def main():
 				VV.Edit.Regions.Save(regionFileName)
 				continue
 				
-			points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
+			_, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
 			font = CvFont(FontFace.Italic,int(16/(int(zoom/100*2)+1)),1)
 			font.Thickness = int(16/((int(zoom/100*2)+1)))
 			imageWithRegion.PutText(str(r), CvPoint(CoordX[0]-5,CoordY[0]-5), font, CvScalar(65000))
 			polyLine = Array.CreateInstance(CvPoint, len(CoordX))
 			for i in range(len(CoordX)):
-				polyLine[i] = CvPoint(CoordX[i],CoordY[i])	
+				polyLine[i] = CvPoint(CoordX[i],CoordY[i])
 			polyLines[0] = polyLine
 			VV.Window.Regions.Active.Index=r+1
 			if VV.Window.Regions.Active.Type=='PolyLine':
@@ -718,7 +715,7 @@ def main():
 			VV.Window.Selected.Handle = overviewHandle
 			VV.Edit.Regions.ClearAll()
 			VV.Edit.Regions.Load(regionFileName)
-			currentTiles, imgTileRegions, imgCentersX, imgCentersY = getAcquisitionTiles(r+1, binaryMask, bin, magnificationRatio, heightImage)
+			currentTiles, _, imgCentersX, imgCentersY = getAcquisitionTiles(r+1, binaryMask, binValue, magnificationRatio, heightImage)
 			VV.Edit.Regions.ClearAll()
 
 			for tile in currentTiles:
@@ -728,7 +725,7 @@ def main():
 		
 			# *************************************************************************************
 			# Adjust calculated tiles
-			# *************************************************************************************		
+			# *************************************************************************************
 
 			imgFocusPoints = []
 			imgCentersX = []
@@ -737,14 +734,14 @@ def main():
 			for t in range(VV.Window.Regions.Count):
 					VV.Window.Regions.Active.Index = t+1
 					left = VV.Window.Regions.Active.Left
-					leftscaled = int(VV.Window.Regions.Active.Left/scale) 
+					leftscaled = int(VV.Window.Regions.Active.Left/scale)
 					width = VV.Window.Regions.Active.Width
 					widthscaled = int(VV.Window.Regions.Active.Width/scale)
 					top = VV.Window.Regions.Active.Top
 					topscaled = int(VV.Window.Regions.Active.Top/scale)
 					height = VV.Window.Regions.Active.Height
 					heightscaled = int(VV.Window.Regions.Active.Height/scale)
-					imgCentersX.append(left+width/2)		
+					imgCentersX.append(left+width/2)
 					imgCentersY.append(top+height/2)
 					dummy, focusTile = heightImage.GetSubRect(CvRect(leftscaled, topscaled, widthscaled, heightscaled))
 					imgFocusPoints.append(focusTile.Avg().Val0)
@@ -754,23 +751,21 @@ def main():
 	if not reusePositions:
 		VV.Window.Selected.Handle = overviewHandle
 		restoreRegions(regionFileName)
-		
+
 	# *************************************************************************************
 	# Start Acquisition
-	# *************************************************************************************	
+	# *************************************************************************************
 
 	VV.Window.Active.Handle = overviewHandle
 	timeStart = datetime.datetime.now()
 	print (timeStart.strftime("Experiment started at %H:%M:%S"))
 	
 	VV.Macro.MessageBox.ShowAndWait("Please cheack parameters in the Acquire Window (i.e. z-stack and multi-wavelengths options)", "Check...", False)
-	
-	"""
-	# Close Overview Image
-	VV.Window.Selected.Handle = overviewHandle
-	VV.Window.Selected.Close(False)
-	"""
-	
+
+	# # Close Overview Image
+	# VV.Window.Selected.Handle = overviewHandle
+	# VV.Window.Selected.Close(False)
+
 	# Close Region ID Image
 	try:
 		VV.Window.Selected.Handle = regionImageHandle
@@ -803,25 +798,25 @@ def main():
 				timePerTile = timeAcquisitionFirstRegion / numberTilesEachRegion[0]
 			else:
 				timePerTile = timeAcquisitionFirstRegion
-				print ("Times could not be calculated since number of tiles is not known")		
+				print ("Times could not be calculated since number of tiles is not known")
 			print ("\n______________________\n")
-			for k in range(len(numberTilesEachRegion)):
-				myString1 = "Time to acquire region "+str(k)+" (containing "+str(numberTilesEachRegion[k])+" tiles) = "+str(int(timePerTile*numberTilesEachRegion[k]))+" sec"
+			for k, nTilesCurrent in enumerate(numberTilesEachRegion):
+				myString1 = "Time to acquire region "+str(k)+" (containing "+str(nTilesCurrent)+" tiles) = "+str(int(timePerTile*nTilesCurrent))+" sec"
 				if numberTilesEachRegion[0] == 0:
 					numberTilesEachRegion[0] = 1
-				timeStart = timeStart + diff/numberTilesEachRegion[0]*numberTilesEachRegion[k]
+				timeStart = timeStart + diff/numberTilesEachRegion[0]*nTilesCurrent
 				myString2 = ""
 				if k>0:
 					myString2 = ("  => Region "+str(k)+" will finish at "+timeStart.strftime("%H:%M:%S"))
 					print(myString2)
-				mailText=mailText+myString1+"\n"+myString2+"\n"	
+				mailText=mailText+myString1+"\n"+myString2+"\n"
 			print ("______________________\n")
 			
 			InfoMail = EmailToolbox.Email(destin = mailAdresse, title = "Acquisition Schedule", message = mailText)
 			InfoMail.send()
-			
-		"""	
-		# Acquire tiles		
+
+		"""
+		# Acquire tiles
 		"""
 		VV.Acquire.Stage.PositionList.Load(os.path.join(baseDir,stgFile))
 		m = re.match(r'.*\\([^\\]+).stg', os.path.join(baseDir,stgFile))
@@ -835,7 +830,7 @@ def main():
 		ndBaseName = VV.File.Info.NameOnly
 		ndBaseName = ndBaseName[0:ndBaseName.rfind('_')]
 		newCalibration = VV.Magnification.Calibration.Value
-		writeTileConfig(baseDir, stgFile, ndBaseName, newCalibration * bin)
+		writeTileConfig(baseDir, stgFile, ndBaseName, newCalibration * binValue)
 
 		VV.Window.Selected.Close(False)
 		# close image windows after acquisition
