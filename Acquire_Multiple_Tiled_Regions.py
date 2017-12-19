@@ -652,12 +652,14 @@ def main():
 		imageWithRegion.Set(CvScalar(0))
 		restoreRegions(regionFileName)
 		polyLines = Array.CreateInstance(Array[CvPoint], 1)
-		for r in range(VV.Window.Regions.Count):
-			VV.Window.Regions.Active.Index = r+1
+
+		for r in range(VV.Window.Regions.Count,0,-1):
+			VV.Window.Regions.Active.Index = r
 			
 			#Test size of region and delete it if too small. this is to avoid empty position lists afterwards
 			regionSize = VV.Window.Regions.Active.Width * VV.Window.Regions.Active.Height
-			if regionSize <= 100:
+			if regionSize <= 500:
+				print "too small"
 				VV.Window.Regions.Active.Remove()
 				VV.Edit.Regions.Save(regionFileName)
 				continue
@@ -670,11 +672,14 @@ def main():
 			for i in range(len(CoordX)):
 				polyLine[i] = CvPoint(CoordX[i],CoordY[i])	
 			polyLines[0] = polyLine
-			VV.Window.Regions.Active.Index=r+1
+			
+			VV.Window.Regions.Active.Index=r
 			if VV.Window.Regions.Active.Type=='PolyLine':
 				imageWithRegion.DrawPolyLine(polyLines, False, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
 			else:
 				imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
+
+		VV.Edit.Regions.Save(regionFileName)	
 		VV.Image.WriteFromPointer(imageWithRegion.Data, he, wi)
 		VV.Edit.Regions.ClearAll()
 		VV.Window.Selected.Top = user32.GetSystemMetrics(1)/3 + 20
@@ -713,8 +718,11 @@ def main():
 
 		# Create binary mask (CvMat) with all regions
 		binaryMask = generateEmptyMask(VV.Image.Height, VV.Image.Width)
-	
+		VV.Edit.Regions.ClearAll()
+		VV.Edit.Regions.Load(regionFileName)
+		print ("regions count = "+str(VV.Window.Regions.Count))
 		for r in range(VV.Window.Regions.Count):
+			print r
 			VV.Window.Selected.Handle = overviewHandle
 			VV.Edit.Regions.ClearAll()
 			VV.Edit.Regions.Load(regionFileName)
