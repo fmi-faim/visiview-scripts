@@ -7,25 +7,16 @@ sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\FMI-git"
 sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\FMI-git\lib")
 sys.path.append(r"C:\ProgramData\Visitron Systems\VisiView\PythonMacros\FMI-git\faim-common-utils")
 vvimport('OpenCV')
+vvimport('fileutils')
 import datetime
 import ctypes
 import EmailToolbox
-import fileutils
 import focusmap
 
 # *************************************************************************************
 # Positions in the position list are saved as a .stg file opened with a csv reader. 
 # The function returns 3 arrays of coordinates for x, y and z
 # *************************************************************************************
-def parsePositions():
-	tempDir = os.getenv("TEMP")
-	# Save the position list to calculate the focus map
-	VV.Acquire.Stage.PositionList.Save(tempDir + "\\PositionList.stg")
-	# TODO save position list to same folder as datasets
-	# TODO use vvimport to factor out this whole function
-	# Read the position list from file
-	return fileutils.positionsFromFile(tempDir + "\\PositionList.stg")
-
 
 def generateHeightImage(width, height, calibration, cX, cY, cZ):
 	# Get Image corner coords as stage coordinates
