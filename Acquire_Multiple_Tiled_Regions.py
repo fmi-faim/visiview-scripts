@@ -436,7 +436,7 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 			for tile in currentTiles:
 				VV.Window.Regions.AddCentered("Rectangle", tile.X+tile.Width/2, tile.Y+tile.Height/2, tile.Width, tile.Height)
 	
-			VV.Macro.MessageBox.ShowAndWait("Please Adjust Tiles for region "+str(r), "Tile Adjustment", False)
+			VV.Macro.MessageBox.ShowAndWait("Please Adjust Tiles for region "+str(r+1), "Tile Adjustment", False)
 		
 			# *************************************************************************************
 			# Adjust calculated tiles
@@ -461,7 +461,7 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 					dummy, focusTile = heightImage.GetSubRect(CvRect(leftscaled, topscaled, widthscaled, heightscaled))
 					imgFocusPoints.append(focusTile.Avg().Val0)
 		
-			stgFileList.append(saveTileList(r, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints))
+			stgFileList.append(saveTileList(r+1, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints))
 		VV.Window.Selected.Handle = overviewHandle
 		restoreRegions(regionFileName)
 		return stgFileList
@@ -550,13 +550,13 @@ def main():
 				print ("Times could not be calculated since number of tiles is not known")		
 			print ("\n______________________\n")
 			for k in range(len(numberTilesEachRegion)):
-				myString1 = "Time to acquire region "+str(k)+" (containing "+str(numberTilesEachRegion[k])+" tiles) = "+str(int(timePerTile*numberTilesEachRegion[k]))+" sec"
+				myString1 = "Time to acquire region "+str(k+1)+" (containing "+str(numberTilesEachRegion[k])+" tiles) = "+str(int(timePerTile*numberTilesEachRegion[k]))+" sec"
 				if numberTilesEachRegion[0] == 0:
 					numberTilesEachRegion[0] = 1
 				timeStart = timeStart + diff/numberTilesEachRegion[0]*numberTilesEachRegion[k]
 				myString2 = ""
 				if k>0:
-					myString2 = ("  => Region "+str(k)+" will finish at "+timeStart.strftime("%H:%M:%S"))
+					myString2 = ("  => Region "+str(k+1)+" will finish at "+timeStart.strftime("%H:%M:%S"))
 					print(myString2)
 				mailText=mailText+myString1+"\n"+myString2+"\n"	
 			print ("______________________\n")
