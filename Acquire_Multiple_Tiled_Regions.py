@@ -332,7 +332,7 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 			overviewName = os.path.join(baseDir, baseName+'_OVERVIEW.tif')
 			VV.File.SaveAs(overviewName, True)
 		SetGlobalVar('ch.fmi.VV.lastOverview', overviewName)
-	
+
 		# Unselect regions
 		regionFileName = "MultiTileRegion.rgn"
 		VV.Edit.Regions.Save(regionFileName)
@@ -426,7 +426,6 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 		VV.Edit.Regions.Load(regionFileName)
 		print ("regions count = "+str(VV.Window.Regions.Count))
 		for r in range(VV.Window.Regions.Count):
-			print r
 			VV.Window.Selected.Handle = overviewHandle
 			VV.Edit.Regions.ClearAll()
 			VV.Edit.Regions.Load(regionFileName)
@@ -506,15 +505,15 @@ def main():
 	VV.Window.Active.Handle = overviewHandle
 	timeStart = datetime.datetime.now()
 	print (timeStart.strftime("Experiment started at %H:%M:%S"))
-	
-	VV.Macro.MessageBox.ShowAndWait("Please cheack parameters in the Acquire Window (i.e. z-stack and multi-wavelengths options)", "Check...", False)
-	
+
+	VV.Macro.MessageBox.ShowAndWait("Please check parameters in the Acquire window (i.e. z-stack and multi-wavelengths options)", "Check...", False)
+
 	"""
 	# Close Overview Image
 	VV.Window.Selected.Handle = overviewHandle
 	VV.Window.Selected.Close(False)
 	"""
-	
+
 	# Close Region ID Image
 	try:
 		VV.Window.Selected.Handle = regionImageHandle
