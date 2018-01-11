@@ -306,47 +306,25 @@ def writeTileConfig(baseDir, stgFile, baseName, cal):
 	f.close()
 	tcFile.close()
 
-# *************************************************************************************
-# *************************************************************************************
-#
-# 										MAIN
-#
-# *************************************************************************************
-# *************************************************************************************
-def main():
-
-	# *************************************************************************************
-	# Initialization
-	# *************************************************************************************
-	user32 = ctypes.windll.user32
-	screensize = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+def initializeUI():
+	# Clear and show Print Window
 	VV.Macro.PrintWindow.Clear()
 	VV.Macro.PrintWindow.IsVisible = True
-	
-	overviewHandle = VV.Window.GetHandle.Active
+
+	# Move and resize overview window
 	VV.Window.Selected.Top = 10
 	VV.Window.Selected.Left = 10
-	VV.Window.Selected.Height = user32.GetSystemMetrics(1)/3
-	
-	cal = VV.Image.Calibration.Value
-	cX, cY, cZ = parsePositions()
-	magnificationRatio = float(VV.Magnification.Calibration.Value)/float(VV.Image.Calibration.Value)
-	bin = VV.Acquire.Binning
-	VV.Acquire.Stage.SeriesType = 'PositionList'
-	
-	reuseFocusMap = False
-	reusePositions = False
+	VV.Window.Selected.Height = ctypes.windll.user32.GetSystemMetrics(1)/3
 
-	baseDir = VV.Acquire.Sequence.Directory
-	stgFileList = []
-	mailText = ""
-	mailAdresse = ""
-	
-	baseName, reuseFocusMap, reusePositions, stgFileList, mailAdresse = configDialog()
-	VV.Acquire.Sequence.BaseName = baseName
-	
+	# Make sure Save Sequence to Disk is checked
+	VV.Acquire.Sequence.SaveToDisk = True
+
+	# Switch to PositionList in Acquire/Stage
+	VV.Acquire.Stage.SeriesType = 'PositionList'
+
+def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin):
 	if reusePositions:
-		stgFileList = stagePosDialog(stgFileList)
+		return stagePosDialog(stgFileList)
 	else:
 		stgFileList = []
 		overviewName = VV.File.Info.Name
@@ -362,7 +340,15 @@ def main():
 		# will have to be replaced by
 		VV.Window.Regions.Active.IsValid = False
 
-	
+
+		#Test size of region and delete it if too small. this is to avoid empty position lists afterwards
+		for r in range(VV.Window.Regions.Count,0,-1):
+			VV.Window.Regions.Active.Index = r
+			regionSize = VV.Window.Regions.Active.Width * VV.Window.Regions.Active.Height
+			if regionSize <= 500:
+				VV.Window.Regions.Active.Remove()
+		VV.Edit.Regions.Save(regionFileName)
+
 		# *************************************************************************************
 		# Create an image with the numbers of the regions
 		# *************************************************************************************
@@ -382,15 +368,7 @@ def main():
 
 		for r in range(VV.Window.Regions.Count,0,-1):
 			VV.Window.Regions.Active.Index = r
-			
-			#Test size of region and delete it if too small. this is to avoid empty position lists afterwards
-			regionSize = VV.Window.Regions.Active.Width * VV.Window.Regions.Active.Height
-			if regionSize <= 500:
-				print "too small"
-				VV.Window.Regions.Active.Remove()
-				VV.Edit.Regions.Save(regionFileName)
-				continue
-				
+
 			points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
 			font = CvFont(FontFace.Italic,int(16/(int(zoom/100*2)+1)),1)
 			font.Thickness = int(16/((int(zoom/100*2)+1)))
@@ -400,18 +378,17 @@ def main():
 				polyLine[i] = CvPoint(CoordX[i],CoordY[i])	
 			polyLines[0] = polyLine
 			
-			VV.Window.Regions.Active.Index=r
+			VV.Window.Regions.Active.Index = r
 			if VV.Window.Regions.Active.Type=='PolyLine':
 				imageWithRegion.DrawPolyLine(polyLines, False, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
 			else:
 				imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
 
-		VV.Edit.Regions.Save(regionFileName)	
 		VV.Image.WriteFromPointer(imageWithRegion.Data, he, wi)
 		VV.Edit.Regions.ClearAll()
-		VV.Window.Selected.Top = user32.GetSystemMetrics(1)/3 + 20
+		VV.Window.Selected.Top = ctypes.windll.user32.GetSystemMetrics(1)/3 + 20
 		VV.Window.Selected.Left = 10
-		VV.Window.Selected.Width=user32.GetSystemMetrics(0)/4
+		VV.Window.Selected.Width=ctypes.windll.user32.GetSystemMetrics(0)/4
 
 		path = os.path.join(baseDir, baseName+'_regions.tif')
 		VV.File.SaveAs(path, True)
@@ -435,9 +412,9 @@ def main():
 			# load image, get data as CvMat, un-normalize with min and max
 			heightImage = loadHeightImage()
 		focusImageHandle = VV.Window.Selected.Handle
-		VV.Window.Selected.Top = user32.GetSystemMetrics(1)/3 +60
+		VV.Window.Selected.Top = ctypes.windll.user32.GetSystemMetrics(1)/3 +60
 		VV.Window.Selected.Left = 30
-		VV.Window.Selected.Width=user32.GetSystemMetrics(0)/4
+		VV.Window.Selected.Width=ctypes.windll.user32.GetSystemMetrics(0)/4
 	
 		# TODO take care of regions and active image
 		VV.Window.Active.Handle = overviewHandle
@@ -485,10 +462,42 @@ def main():
 					imgFocusPoints.append(focusTile.Avg().Val0)
 		
 			stgFileList.append(saveTileList(r, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints))
-			
-	if not reusePositions:
 		VV.Window.Selected.Handle = overviewHandle
 		restoreRegions(regionFileName)
+		return stgFileList
+
+# *************************************************************************************
+# *************************************************************************************
+#
+# 										MAIN
+#
+# *************************************************************************************
+# *************************************************************************************
+def main():
+
+	# *************************************************************************************
+	# Initialization
+	# *************************************************************************************
+	initializeUI()
+	overviewHandle = VV.Window.GetHandle.Active
+	
+	cal = VV.Image.Calibration.Value
+	cX, cY, cZ = parsePositions()
+	magnificationRatio = float(VV.Magnification.Calibration.Value)/float(VV.Image.Calibration.Value)
+	bin = VV.Acquire.Binning
+	
+	reuseFocusMap = False
+	reusePositions = False
+
+	baseDir = VV.Acquire.Sequence.Directory
+	stgFileList = []
+	mailText = ""
+	#mailAdresse = ""
+
+	baseName, reuseFocusMap, reusePositions, stgFileList, mailAdresse = configDialog()
+	VV.Acquire.Sequence.BaseName = baseName
+
+	stgFileList = getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin)
 		
 	# *************************************************************************************
 	# Start Acquisition
