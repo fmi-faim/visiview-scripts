@@ -14,7 +14,7 @@ import EmailToolbox
 import focusmap
 
 # *************************************************************************************
-# Positions in the position list are saved as a .stg file opened with a csv reader. 
+# Positions in the position list are saved as a .stg file opened with a csv reader.
 # The function returns 3 arrays of coordinates for x, y and z
 # *************************************************************************************
 
@@ -47,7 +47,7 @@ def saveHeightImage(heightImageHandle, focusMin, focusMax):
 	VV.Window.Selected.Handle = heightImageHandle
 	tempDir = os.getenv("TEMP")
 	VV.File.SaveAs(os.path.join(tempDir, 'TmpFocusImage.tif'), True)
-	
+
 def loadHeightImage():
 	focusMin = GetGlobalVar('ch.fmi.VV.focusMin')
 	focusMax = GetGlobalVar('ch.fmi.VV.focusMax')
@@ -67,7 +67,7 @@ def displayHeightImage(heightImage, focusMin, focusMax, regionFileName, scale, h
 
 	heightImageU16 = CvMat(heightImageH, heightImageW, MatrixType.U16C1)
 	heightImageNormalized.Convert(heightImageU16)
-	
+
 	#VV.Edit.Duplicate.Plane()
 	VV.Process.CreateEmptyPlane('Monochrome16', heightImageW, heightImageH)
 	VV.Image.WriteFromPointer(heightImageU16.Data, heightImageH, heightImageW)
@@ -84,14 +84,14 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 		VV.Window.Regions.Active.Index = regionIndex
 		# TODO make user-definable
 		overlap = 0.1
-		
+
 		# Draw current region into mask
-		#get all information of the active region 
+		#get all information of the active region
 		points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
-		
+
 		# Clear mask (reset to 0)
 		binaryMask.Set(CvScalar(0))
-		
+
 		#Region as polyline
 		polygonPoints = Array.CreateInstance(CvPoint, len(CoordX))
 		for i in range(len(CoordX)):
@@ -102,7 +102,7 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 			binaryMask.PolyLine(polyLines,False,CvScalar(255))
 		else:
 			binaryMask.FillPoly(polyLines,CvScalar(255))
-		
+
 		# Get bounding box coordinates
 		regionW = VV.Window.Regions.Active.Width
 		regionH = VV.Window.Regions.Active.Height
@@ -115,13 +115,13 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 		overlapHeight = tileHeight * overlap
 		reducedTileWidth = tileWidth-overlapWidth
 		reducedTileHeight = tileHeight-overlapHeight
-		
+
 		nTilesX = math.ceil((regionW-overlapWidth) / reducedTileWidth)
 		nTilesY = math.ceil((regionH-overlapHeight) / reducedTileHeight)
-		
+
 		overhangX = (nTilesX * (reducedTileWidth) + overlapWidth) - regionW
 		overhangY = (nTilesY * (reducedTileHeight) + overlapHeight) - regionH
-		
+
 		startLeft = max(regionLeft - (overhangX/2), 0)
 		startTop = max(regionTop - (overhangY/2), 0)
 		binaryMaskRectangles = binaryMask.Clone()
@@ -177,22 +177,22 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 					tLeft = startLeft + col * (reducedTileWidth)
 					tTop = startTop + row * (reducedTileHeight)
 					currentTile = CvRect(tLeft, tTop, min(tileWidth, imageWidth-tLeft), min(tileHeight, imageHeight-tTop))
-					
+
 					# Crop binary mask to current rectangle
 					dummy, croppedMask = binaryMask.GetSubRect(currentTile)
-					
+
 					# Measure max value of cropped rectangle
 					minValue = clr.Reference[float]()
 					maxValue = clr.Reference[float]()
 					Cv.MinMaxLoc(croppedMask,minValue,maxValue)
-					
+
 					# filter tiles according to actual polygon area
 					if(int(maxValue) == 255):
 						imgTiles.append(currentTile)
 						imgTileRegions.append(regionIndex)
 						imgCentersX.append(tLeft + tileWidth/2)
 						imgCentersY.append(tTop + tileHeight/2)
-					
+
 		# Return all results
 		return imgTiles, imgTileRegions, imgCentersX, imgCentersY
 
@@ -231,15 +231,15 @@ def configDialog():
 	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
 	VV.Macro.InputDialog.AddStringVariable("E-mail address", "mailAdresse", emailAdresse)
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
-		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)	
+		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)
 	if (condition == True):
 		VV.Macro.InputDialog.AddBoolVariable("Re-use Saved Lists of Positions?", "reusePositions", False)
 	VV.Macro.InputDialog.Width=450
 	VV.Macro.InputDialog.Show()
-	
+
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
 		doReUse = reusefocusmap
-	if condition == True:	
+	if condition == True:
 		doReUse2 = reusePositions
 
 	return (basename[:-1] if basename.endswith('_') else basename), doReUse, doReUse2, listSTGfiles, mailAdresse
@@ -258,8 +258,8 @@ def stagePosDialog(listSTGfiles):
 		if myVar[i]:
 			myList.append(listSTGfiles[i])
 	return myList
-	
-	
+
+
 def restoreFocusPositions():
 	tempDir = os.getenv("TEMP")
 	posList = tempDir + "\\PositionList.stg"
@@ -269,7 +269,7 @@ def restoreFocusPositions():
 
 def restoreRegions(regionFileName):
 	VV.Edit.Regions.Load(regionFileName)
-	
+
 def reopenOverviewImage():
 	path = GetGlobalVar('ch.fmi.VV.lastOverview')
 	return VV.File.Open(path)
@@ -366,9 +366,9 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 			imageWithRegion.PutText(str(r), CvPoint(CoordX[0]-5,CoordY[0]-5), font, CvScalar(65000))
 			polyLine = Array.CreateInstance(CvPoint, len(CoordX))
 			for i in range(len(CoordX)):
-				polyLine[i] = CvPoint(CoordX[i],CoordY[i])	
+				polyLine[i] = CvPoint(CoordX[i],CoordY[i])
 			polyLines[0] = polyLine
-			
+
 			VV.Window.Regions.Active.Index = r
 			if VV.Window.Regions.Active.Type=='PolyLine':
 				imageWithRegion.DrawPolyLine(polyLines, False, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
@@ -406,7 +406,7 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 		VV.Window.Selected.Top = ctypes.windll.user32.GetSystemMetrics(1)/3 +60
 		VV.Window.Selected.Left = 30
 		VV.Window.Selected.Width=ctypes.windll.user32.GetSystemMetrics(0)/4
-	
+
 		# TODO take care of regions and active image
 		VV.Window.Active.Handle = overviewHandle
 		VV.Window.Selected.Handle = overviewHandle
@@ -425,32 +425,32 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 
 			for tile in currentTiles:
 				VV.Window.Regions.AddCentered("Rectangle", tile.X+tile.Width/2, tile.Y+tile.Height/2, tile.Width, tile.Height)
-	
+
 			VV.Macro.MessageBox.ShowAndWait("Please Adjust Tiles for region "+str(r+1), "Tile Adjustment", False)
-		
+
 			# *************************************************************************************
 			# Adjust calculated tiles
-			# *************************************************************************************		
+			# *************************************************************************************
 
 			imgFocusPoints = []
 			imgCentersX = []
 			imgCentersY = []
-			
+
 			for t in range(VV.Window.Regions.Count):
 					VV.Window.Regions.Active.Index = t+1
 					left = VV.Window.Regions.Active.Left
-					leftscaled = int(VV.Window.Regions.Active.Left/scale) 
+					leftscaled = int(VV.Window.Regions.Active.Left/scale)
 					width = VV.Window.Regions.Active.Width
 					widthscaled = int(VV.Window.Regions.Active.Width/scale)
 					top = VV.Window.Regions.Active.Top
 					topscaled = int(VV.Window.Regions.Active.Top/scale)
 					height = VV.Window.Regions.Active.Height
 					heightscaled = int(VV.Window.Regions.Active.Height/scale)
-					imgCentersX.append(left+width/2)		
+					imgCentersX.append(left+width/2)
 					imgCentersY.append(top+height/2)
 					dummy, focusTile = heightImage.GetSubRect(CvRect(leftscaled, topscaled, widthscaled, heightscaled))
 					imgFocusPoints.append(focusTile.Avg().Val0)
-		
+
 			stgFileList.append(saveTileList(r+1, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints))
 		VV.Window.Selected.Handle = overviewHandle
 		restoreRegions(regionFileName)
@@ -470,12 +470,12 @@ def main():
 	# *************************************************************************************
 	initializeUI()
 	overviewHandle = VV.Window.GetHandle.Active
-	
+
 	cal = VV.Image.Calibration.Value
 	cX, cY, cZ = parsePositions()
 	magnificationRatio = float(VV.Magnification.Calibration.Value)/float(VV.Image.Calibration.Value)
 	bin = VV.Acquire.Binning
-	
+
 	reuseFocusMap = False
 	reusePositions = False
 
@@ -488,10 +488,10 @@ def main():
 	VV.Acquire.Sequence.BaseName = baseName
 
 	stgFileList = getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin)
-		
+
 	# *************************************************************************************
 	# Start Acquisition
-	# *************************************************************************************	
+	# *************************************************************************************
 
 	VV.Window.Active.Handle = overviewHandle
 	timeStart = datetime.datetime.now()
@@ -537,7 +537,7 @@ def main():
 				timePerTile = timeAcquisitionFirstRegion / numberTilesEachRegion[0]
 			else:
 				timePerTile = timeAcquisitionFirstRegion
-				print ("Times could not be calculated since number of tiles is not known")		
+				print ("Times could not be calculated since number of tiles is not known")
 			print ("\n______________________\n")
 			for k in range(len(numberTilesEachRegion)):
 				myString1 = "Time to acquire region "+str(k+1)+" (containing "+str(numberTilesEachRegion[k])+" tiles) = "+str(int(timePerTile*numberTilesEachRegion[k]))+" sec"
@@ -548,14 +548,14 @@ def main():
 				if k>0:
 					myString2 = ("  => Region "+str(k+1)+" will finish at "+timeStart.strftime("%H:%M:%S"))
 					print(myString2)
-				mailText=mailText+myString1+"\n"+myString2+"\n"	
+				mailText=mailText+myString1+"\n"+myString2+"\n"
 			print ("______________________\n")
-			
+
 			InfoMail = EmailToolbox.Email(destin = mailAdresse, title = "Acquisition Schedule", message = mailText)
 			InfoMail.send()
-			
-		"""	
-		# Acquire tiles		
+
+		"""
+		# Acquire tiles
 		"""
 		VV.Acquire.Stage.PositionList.Load(os.path.join(baseDir,stgFile))
 		m = re.match(r'.*\\([^\\]+).stg', os.path.join(baseDir,stgFile))
