@@ -345,7 +345,7 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 		for r in range(VV.Window.Regions.Count,0,-1):
 			VV.Window.Regions.Active.Index = r
 			regionSize = VV.Window.Regions.Active.Width * VV.Window.Regions.Active.Height
-			if regionSize <= 500:
+			if regionSize <= 150:
 				VV.Window.Regions.Active.Remove()
 		VV.Edit.Regions.Save(regionFileName)
 
