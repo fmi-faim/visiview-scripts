@@ -433,7 +433,7 @@ def main():
 
 	baseName, reuseFocusMap, reusePositions, stgFileList, mailAdresse = configDialog()
 	VV.Acquire.Sequence.BaseName = baseName
-	
+	origBaseName = baseName
 	regionImageHandle, focusImageHandle, stgFileList = getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin)
 
 	# *************************************************************************************
@@ -442,7 +442,7 @@ def main():
 
 	VV.Window.Active.Handle = overviewHandle
 	timeStart = datetime.datetime.now()
-	print (timeStart.strftime("Experiment started at %H:%M:%S"))
+	print (timeStart.strftime("\nExperiment started at %H:%M:%S"))
 
 	VV.Macro.MessageBox.ShowAndWait("Please check parameters in the Acquire window (i.e. z-stack and multi-wavelengths options)", "Check...", False)
 
@@ -494,9 +494,7 @@ def main():
 			InfoMail = EmailToolbox.Email(destin = mailAdresse, title = "Acquisition Schedule", message = mailText)
 			InfoMail.send()
 
-		"""
 		# Acquire tiles
-		"""
 		VV.Acquire.Stage.PositionList.Load(os.path.join(baseDir,stgFile))
 		m = re.match(r'.*\\([^\\]+).stg', os.path.join(baseDir,stgFile))
 		baseName = m.group(1)
@@ -513,11 +511,11 @@ def main():
 
 		VV.Window.Selected.Close(False)
 		# close image windows after acquisition
-		# selected image = last image name, then close
+
 
 	FinalMail = EmailToolbox.Email(destin = mailAdresse, title = "Acquisition finished", message = "All regions have been acquired")
 	FinalMail.send()
-
+	VV.Acquire.Sequence.BaseName = origBaseName
 	restoreFocusPositions()
 
 
