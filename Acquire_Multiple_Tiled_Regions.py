@@ -21,10 +21,8 @@ import focusmap
 def generateHeightImage(width, height, calibration, cX, cY, cZ):
 	# Get Image corner coords as stage coordinates
 	xLeft, yTop = VV.File.ConvertImageCoordinatesToStageCoordinates(0,0)
-	# xRight, yBottom = VV.File.ConvertImageCoordinatesToStageCoordinates(width,height)
 	# Triangulate list and corner points
 	points = focusmap.buildTriangles(cX, cY, cZ,xLeft,yTop,width*calibration,height*calibration)
-
 	# transform to pixel coords
 	focusmap.transformTriangles(points, calibration, xLeft, yTop)
 	# create empty heightImage
@@ -32,14 +30,8 @@ def generateHeightImage(width, height, calibration, cX, cY, cZ):
 	outputImage.Set(CvScalar(0.0))
 	# interpolate and create image
 	focusmap.BiLinearInterpolation(points, outputImage)
-	return outputImage
-
-def generateEmptyMask(height, width):
-	# CvMat 512x512 empty (consider binning)
-	binaryMask = CvMat(height, width, MatrixType.U8C1)
-	binaryMask.Set(CvScalar(0))
 	# return image
-	return binaryMask
+	return outputImage
 
 def saveHeightImage(heightImageHandle, focusMin, focusMax):
 	SetGlobalVar('ch.fmi.VV.focusMin', focusMin)
@@ -63,35 +55,29 @@ def loadHeightImage():
 	return heightImageDenormalized
 
 def displayHeightImage(heightImage, focusMin, focusMax, regionFileName, scale, heightImageW, heightImageH):
+	# set values between 0 and 65000 for more contrast in display
 	heightImageNormalized = heightImage if (focusMax==focusMin) else (heightImage-CvScalar(focusMin))*65535/(focusMax-focusMin)
-
+	# create a 16-bit image
 	heightImageU16 = CvMat(heightImageH, heightImageW, MatrixType.U16C1)
+	# transfer values of height image into 16-bit image
 	heightImageNormalized.Convert(heightImageU16)
-
-	#VV.Edit.Duplicate.Plane()
+	# create a new image window in Visiview and copy values of height image into it
 	VV.Process.CreateEmptyPlane('Monochrome16', heightImageW, heightImageH)
 	VV.Image.WriteFromPointer(heightImageU16.Data, heightImageH, heightImageW)
-	#if regionFileName:
-	#	VV.Edit.Regions.Load(regionFileName)
 
 def displayImage(cvImage):
 	VV.Process.CreateEmptyPlane('Monochrome8',VV.Image.Width, VV.Image.Height)
 	VV.Image.WriteFromPointer(cvImage.Data, VV.Image.Width, VV.Image.Height)
-
 
 def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, heightImage):
 		# Select next region
 		VV.Window.Regions.Active.Index = regionIndex
 		# TODO make user-definable
 		overlap = 0.1
-
-		# Draw current region into mask
-		#get all information of the active region
+		# get all information on the active region
 		points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
-
 		# Clear mask (reset to 0)
 		binaryMask.Set(CvScalar(0))
-
 		#Region as polyline
 		polygonPoints = Array.CreateInstance(CvPoint, len(CoordX))
 		for i in range(len(CoordX)):
@@ -102,35 +88,27 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 			binaryMask.PolyLine(polyLines,False,CvScalar(255))
 		else:
 			binaryMask.FillPoly(polyLines,CvScalar(255))
-
-		# Get bounding box coordinates
+		# calculate size and number of tiles to place for the active region
 		regionW = VV.Window.Regions.Active.Width
 		regionH = VV.Window.Regions.Active.Height
 		regionLeft = VV.Window.Regions.Active.Left
 		regionTop = VV.Window.Regions.Active.Top
-
 		tileWidth = float(VV.Acquire.XDimension) * bin * magnificationRatio
 		tileHeight = float(VV.Acquire.YDimension) * bin * magnificationRatio
 		overlapWidth = tileWidth * overlap
 		overlapHeight = tileHeight * overlap
 		reducedTileWidth = tileWidth-overlapWidth
 		reducedTileHeight = tileHeight-overlapHeight
-
 		nTilesX = math.ceil((regionW-overlapWidth) / reducedTileWidth)
 		nTilesY = math.ceil((regionH-overlapHeight) / reducedTileHeight)
-
 		overhangX = (nTilesX * (reducedTileWidth) + overlapWidth) - regionW
 		overhangY = (nTilesY * (reducedTileHeight) + overlapHeight) - regionH
-
 		startLeft = max(regionLeft - (overhangX/2), 0)
 		startTop = max(regionTop - (overhangY/2), 0)
+
 		binaryMaskRectangles = binaryMask.Clone()
-		# Create container lists for results
-		# TODO replace by better structure (dict?)
+
 		imgTiles = []
-		imgTileRegions = []
-		imgCentersX = []
-		imgCentersY = []
 
 		# return all possible tiles
 		if VV.Window.Regions.Active.Type == 'PolyLine':
@@ -150,9 +128,6 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 						continue
 				if jump == False:
 					imgTiles.append(currentTile)
-					imgTileRegions.append(regionIndex)
-					imgCentersX.append(startX)
-					imgCentersY.append(startY)
 
 				for j in range(int(dist/reducedTileWidth)):
 					startX = startX + reducedTileWidth*angleCOS
@@ -166,9 +141,7 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 					else:
 						currentTile = CvRect(startX, startY, tileWidth, tileHeight)
 						imgTiles.append(currentTile)
-						imgTileRegions.append(regionIndex)
-						imgCentersX.append(startX)
-						imgCentersY.append(startY)
+
 		else:
 			imageWidth = binaryMask.Width
 			imageHeight = binaryMask.Height
@@ -177,38 +150,30 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 					tLeft = startLeft + col * (reducedTileWidth)
 					tTop = startTop + row * (reducedTileHeight)
 					currentTile = CvRect(tLeft, tTop, min(tileWidth, imageWidth-tLeft), min(tileHeight, imageHeight-tTop))
-
 					# Crop binary mask to current rectangle
 					dummy, croppedMask = binaryMask.GetSubRect(currentTile)
-
 					# Measure max value of cropped rectangle
 					minValue = clr.Reference[float]()
 					maxValue = clr.Reference[float]()
 					Cv.MinMaxLoc(croppedMask,minValue,maxValue)
-
 					# filter tiles according to actual polygon area
 					if(int(maxValue) == 255):
 						imgTiles.append(currentTile)
-						imgTileRegions.append(regionIndex)
-						imgCentersX.append(tLeft + tileWidth/2)
-						imgCentersY.append(tTop + tileHeight/2)
 
-		# Return all results
-		return imgTiles, imgTileRegions, imgCentersX, imgCentersY
+		# Return results
+		return imgTiles
 
 def saveTileList(roiNumber, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints):
 	stageListFile = os.path.join(baseDir, baseName + "_Region-" + str(roiNumber) + "_nTiles-" + str(len(imgCentersX)).zfill(3)+"_"+".stg")
 	target = open(stageListFile, 'w')
 	# csvWriter = csv.writer(target)
 	target.write("\"Stage Memory List\", Version 5.0\n0, 0, 0, 0, 0, 0, 0, \"microns\", \"microns\"\n0\n"+str(len(imgCentersX))+"\n")
-	# csvWriter.writeRow("Stage Memory List", )
-
 	for i in range(len(imgCentersX)):
 		x,y = VV.File.ConvertImageCoordinatesToStageCoordinates(imgCentersX[i], imgCentersY[i])
 		text = "\"Position"+str(i+1)+"\", "+("%.3f" % x)+", "+("%.3f" % y)+", "+("%.3f" % imgFocusPoints[i])+", 0, 0, FALSE, -9999, TRUE, TRUE, 0, -1, \"\"\n"
 		target.write(text)
 	target.close()
-	#sleep(2)
+
 	return(stageListFile)
 
 
@@ -412,7 +377,8 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 		VV.Window.Selected.Handle = overviewHandle
 
 		# Create binary mask (CvMat) with all regions
-		binaryMask = generateEmptyMask(VV.Image.Height, VV.Image.Width)
+		binaryMask = CvMat(VV.Image.Height, VV.Image.Width, MatrixType.U8C1)
+		binaryMask.Set(CvScalar(0))
 		VV.Edit.Regions.ClearAll()
 		VV.Edit.Regions.Load(regionFileName)
 		print ("regions count = "+str(VV.Window.Regions.Count))
@@ -420,7 +386,8 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 			VV.Window.Selected.Handle = overviewHandle
 			VV.Edit.Regions.ClearAll()
 			VV.Edit.Regions.Load(regionFileName)
-			currentTiles, imgTileRegions, imgCentersX, imgCentersY = getAcquisitionTiles(r+1, binaryMask, bin, magnificationRatio, heightImage)
+			#currentTiles, imgTileRegions, imgCentersX, imgCentersY = getAcquisitionTiles(r+1, binaryMask, bin, magnificationRatio, heightImage)
+			currentTiles = getAcquisitionTiles(r+1, binaryMask, bin, magnificationRatio, heightImage)
 			VV.Edit.Regions.ClearAll()
 
 			for tile in currentTiles:
@@ -499,19 +466,12 @@ def main():
 
 	VV.Macro.MessageBox.ShowAndWait("Please check parameters in the Acquire window (i.e. z-stack and multi-wavelengths options)", "Check...", False)
 
-	"""
-	# Close Overview Image
-	VV.Window.Selected.Handle = overviewHandle
-	VV.Window.Selected.Close(False)
-	"""
-
 	# Close Region ID Image
 	try:
 		VV.Window.Selected.Handle = regionImageHandle
 		VV.Window.Selected.Close(False)
 	except:
 		pass
-
 	# Close Focus Image
 	try:
 		VV.Window.Selected.Handle = focusImageHandle
