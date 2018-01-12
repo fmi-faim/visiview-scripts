@@ -106,11 +106,8 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 		startLeft = max(regionLeft - (overhangX/2), 0)
 		startTop = max(regionTop - (overhangY/2), 0)
 
-		binaryMaskRectangles = binaryMask.Clone()
-
-		imgTiles = []
-
 		# return all possible tiles
+		imgTiles = []
 		if VV.Window.Regions.Active.Type == 'PolyLine':
 			for p in range(points-1):
 				dist = math.sqrt(math.pow(CoordX[p+1]-CoordX[p],2)+math.pow(CoordY[p+1]-CoordY[p],2))
@@ -305,9 +302,7 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 				VV.Window.Regions.Active.Remove()
 		VV.Edit.Regions.Save(regionFileName)
 
-		# *************************************************************************************
 		# Create an image with the numbers of the regions
-		# *************************************************************************************
 		VV.Window.Active.Handle = overviewHandle
 		VV.Window.Selected.Handle = overviewHandle
 		VV.Window.Regions.Active.IsValid = False
@@ -324,7 +319,6 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 
 		for r in range(VV.Window.Regions.Count,0,-1):
 			VV.Window.Regions.Active.Index = r
-
 			points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
 			font = CvFont(FontFace.Italic,int(16/(int(zoom/100*2)+1)),1)
 			font.Thickness = int(16/((int(zoom/100*2)+1)))
@@ -333,7 +327,6 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 			for i in range(len(CoordX)):
 				polyLine[i] = CvPoint(CoordX[i],CoordY[i])
 			polyLines[0] = polyLine
-
 			VV.Window.Regions.Active.Index = r
 			if VV.Window.Regions.Active.Type=='PolyLine':
 				imageWithRegion.DrawPolyLine(polyLines, False, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
@@ -350,10 +343,7 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 		VV.File.SaveAs(path, True)
 		regionImageHandle = VV.Window.GetHandle.Active
 
-
-		# *************************************************************************************
 		# Create Focus Map
-		# *************************************************************************************
 		VV.Window.Active.Handle = overviewHandle
 		VV.Window.Regions.Active.IsValid = False
 		scale = int((he/512+wi/512)/4)+1
@@ -381,12 +371,11 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 		binaryMask.Set(CvScalar(0))
 		VV.Edit.Regions.ClearAll()
 		VV.Edit.Regions.Load(regionFileName)
-		print ("regions count = "+str(VV.Window.Regions.Count))
+		print ("Number of regions = "+str(VV.Window.Regions.Count))
 		for r in range(VV.Window.Regions.Count):
 			VV.Window.Selected.Handle = overviewHandle
 			VV.Edit.Regions.ClearAll()
 			VV.Edit.Regions.Load(regionFileName)
-			#currentTiles, imgTileRegions, imgCentersX, imgCentersY = getAcquisitionTiles(r+1, binaryMask, bin, magnificationRatio, heightImage)
 			currentTiles = getAcquisitionTiles(r+1, binaryMask, bin, magnificationRatio, heightImage)
 			VV.Edit.Regions.ClearAll()
 
@@ -395,10 +384,7 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 
 			VV.Macro.MessageBox.ShowAndWait("Please Adjust Tiles for region "+str(r+1), "Tile Adjustment", False)
 
-			# *************************************************************************************
 			# Adjust calculated tiles
-			# *************************************************************************************
-
 			imgFocusPoints = []
 			imgCentersX = []
 			imgCentersY = []
@@ -419,22 +405,18 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 					imgFocusPoints.append(focusTile.Avg().Val0)
 
 			stgFileList.append(saveTileList(r+1, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints))
+			
 		VV.Window.Selected.Handle = overviewHandle
 		restoreRegions(regionFileName)
+	# return results	
 	return regionImageHandle, focusImageHandle, stgFileList
 
 # *************************************************************************************
-# *************************************************************************************
-#
 # 										MAIN
-#
-# *************************************************************************************
 # *************************************************************************************
 def main():
 
-	# *************************************************************************************
 	# Initialization
-	# *************************************************************************************
 	initializeUI()
 	overviewHandle = VV.Window.GetHandle.Active
 
@@ -445,15 +427,13 @@ def main():
 
 	reuseFocusMap = False
 	reusePositions = False
-
 	baseDir = VV.Acquire.Sequence.Directory
 	stgFileList = []
 	mailText = ""
-	#mailAdresse = ""
 
 	baseName, reuseFocusMap, reusePositions, stgFileList, mailAdresse = configDialog()
 	VV.Acquire.Sequence.BaseName = baseName
-
+	
 	regionImageHandle, focusImageHandle, stgFileList = getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin)
 
 	# *************************************************************************************
