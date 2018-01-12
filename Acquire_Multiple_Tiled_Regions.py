@@ -421,7 +421,7 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 			stgFileList.append(saveTileList(r+1, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints))
 		VV.Window.Selected.Handle = overviewHandle
 		restoreRegions(regionFileName)
-		return stgFileList
+	return regionImageHandle, focusImageHandle, stgFileList
 
 # *************************************************************************************
 # *************************************************************************************
@@ -454,7 +454,7 @@ def main():
 	baseName, reuseFocusMap, reusePositions, stgFileList, mailAdresse = configDialog()
 	VV.Acquire.Sequence.BaseName = baseName
 
-	stgFileList = getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin)
+	regionImageHandle, focusImageHandle, stgFileList = getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin)
 
 	# *************************************************************************************
 	# Start Acquisition
