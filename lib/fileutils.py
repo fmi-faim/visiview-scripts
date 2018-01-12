@@ -16,5 +16,5 @@ def parsePositions():
 			coordsZ.append(float(row[3]))
 
 	fo.close()
-	os.remove(path)
+	# os.remove(path) if removed, postiions cannot be reloaded at the end
 	return coordsX, coordsY, coordsZ

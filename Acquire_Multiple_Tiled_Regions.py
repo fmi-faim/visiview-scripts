@@ -184,15 +184,18 @@ def configDialog():
 	doReUse2 = False
 	condition = False
 	listSTGfiles = []
+	emailAdresse = EmailToolbox.createEmailAddress(EmailToolbox.getUserLogged())
 	baseN = VV.Acquire.Sequence.BaseName
+	# removing the underscore avoids bugs later in the acquisition and stitching workflow
 	if baseN.endswith('_'):
 		baseN = baseN[:-1]
+	# check whether position list files (*.stg) for this specific overview exist already
 	onlyFiles = [f for f in os.listdir(VV.Acquire.Sequence.Directory) if os.path.isfile(os.path.join(VV.Acquire.Sequence.Directory, f))]
 	for f in onlyFiles:
 		if (f.split(".")[1:][0] == "stg") & (f.split(".")[0].startswith(baseN)==1):
 			listSTGfiles.append(f)
 			condition = True
-	emailAdresse = EmailToolbox.createEmailAddress(EmailToolbox.getUserLogged())
+	# create a dialog window
 	VV.Macro.InputDialog.Initialize("Experiment parameters.    (C)2017. J. Eglinger & L. Gelman, FAIM - FMI", True)
 	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
 	VV.Macro.InputDialog.AddStringVariable("E-mail address", "mailAdresse", emailAdresse)
@@ -202,12 +205,12 @@ def configDialog():
 		VV.Macro.InputDialog.AddBoolVariable("Re-use Saved Lists of Positions?", "reusePositions", False)
 	VV.Macro.InputDialog.Width=450
 	VV.Macro.InputDialog.Show()
-
+	# assign new values to doReUse and doReUse2 if choice was displayed in dialog window
 	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
 		doReUse = reusefocusmap
 	if condition == True:
 		doReUse2 = reusePositions
-
+	# return results
 	return (basename[:-1] if basename.endswith('_') else basename), doReUse, doReUse2, listSTGfiles, mailAdresse
 
 
