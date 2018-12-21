@@ -32,6 +32,11 @@ for row in reader:
 						 'Z': row[3]})
 	k += 1
 
+VV.Acquire.Stage.Series = False
+VV.Acquire.TimeLapse.Series = False
+VV.Acquire.Z.Series = True
+VV.Acquire.Z.Stream.Request = True
+
 timestart = datetime.datetime.now()
 print (timestart.strftime("Experiment started at %H:%M:%S"))
 print ("****************")
@@ -43,23 +48,19 @@ for timepoint in range(TimePoints):
 		# go to position
 		VV.Stage.XPosition = float(stagePos['X'])
 		VV.Stage.YPosition = float(stagePos['Y'])
-		VV.Focus.ZPosition = float(stagePos['Z'])
+		VV.Stage.ZPosition = float(stagePos['Z'])
 		# acquire setting1
-		VV.Acquire.Settings.Load("C:\Users\Public\Metamorph\setting1")
-		VV.Acquire.Sequence.BaseName = basename+"_ntime"+str(timepoint+1)+"_position"+stagePos['Name']+"_"
-		VV.Acquire.Stage.Series = False
-		VV.Acquire.TimeLapse.Series = False
-		VV.Acquire.Z.Series = True
-		VV.Acquire.Z.Stream.Request = True
+		VV.Acquire.WaveLength.Current = 1
+		VV.Acquire.WaveLength.Illumination ='Yannick-conf405withBF'
+		VV.Acquire.WaveLength.Current = 2
+		VV.Acquire.WaveLength.Illumination ='Yannick-BFwithconf405'
 		VV.Acquire.Sequence.Start()
 		VV.Macro.Control.WaitFor('VV.Acquire.IsRunning', "==", False)
 		# acquire setting2
-		VV.Acquire.Settings.Load("C:\Users\Public\Metamorph\setting2")
-		VV.Acquire.Sequence.BaseName = basename+"_ntime"+str(timepoint+1)+"_position"+stagePos['Name']+"_"
-		VV.Acquire.Stage.Series = False
-		VV.Acquire.TimeLapse.Series = False
-		VV.Acquire.Z.Series = True
-		VV.Acquire.Z.Stream.Request = True
+		VV.Acquire.WaveLength.Current = 1
+		VV.Acquire.WaveLength.Illumination ='Yannick-conf488withBF'
+		VV.Acquire.WaveLength.Current = 2
+		VV.Acquire.WaveLength.Illumination ='Yannick-BFwithConf488'
 		VV.Acquire.Sequence.Start()
 		VV.Macro.Control.WaitFor('VV.Acquire.IsRunning', "==", False)
 
