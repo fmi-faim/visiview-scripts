@@ -6,7 +6,7 @@ tempDir = os.getenv("TEMP")
 
 VV.Macro.PrintWindow.IsVisible = True
 VV.Macro.PrintWindow.Clear()
-
+VV.Acquire.Stage.Series = True
 VV.Acquire.Stage.PositionList.Save(tempDir + "\\PositionList.stg")
 VV.Acquire.Stage.Series = False
 VV.Acquire.TimeLapse.Series = False
@@ -45,6 +45,8 @@ for timepoint in range(TimePoints):
 	time0 = datetime.datetime.now()
 	lineNumber = 0
 	for stagePos in StagePositions:
+
+		VV.Acquire.Sequence.BaseName = basename + "_t"+str(timepoint+1)+"_"+stagePos['Name']+"_"
 		# go to position
 		VV.Stage.XPosition = float(stagePos['X'])
 		VV.Stage.YPosition = float(stagePos['Y'])
@@ -56,6 +58,7 @@ for timepoint in range(TimePoints):
 		VV.Acquire.WaveLength.Illumination ='Yannick-BFwithconf405'
 		VV.Acquire.Sequence.Start()
 		VV.Macro.Control.WaitFor('VV.Acquire.IsRunning', "==", False)
+		VV.Window.CloseAll(False)
 		# acquire setting2
 		VV.Acquire.WaveLength.Current = 1
 		VV.Acquire.WaveLength.Illumination ='Yannick-conf488withBF'
@@ -63,6 +66,7 @@ for timepoint in range(TimePoints):
 		VV.Acquire.WaveLength.Illumination ='Yannick-BFwithConf488'
 		VV.Acquire.Sequence.Start()
 		VV.Macro.Control.WaitFor('VV.Acquire.IsRunning', "==", False)
+		VV.Window.CloseAll(False)
 
 	# wait for next time-point
 	nexttime = timestart + datetime.timedelta(0, (timepoint+1)*TimeInterval)
@@ -71,6 +75,6 @@ for timepoint in range(TimePoints):
 		break
 	print (nexttime.strftime("Next time-point at %H:%M:%S"))
 	VV.Macro.Control.Delay(((nexttime-time0).total_seconds())*1000,'ms')
-	VV.Window.CloseAll(False)
+
 
 VV.Acquire.Sequence.BaseName = basename
