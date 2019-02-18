@@ -51,6 +51,7 @@ for timepoint in range(TimePoints):
 		VV.Stage.XPosition = float(stagePos['X'])
 		VV.Stage.YPosition = float(stagePos['Y'])
 		VV.Stage.ZPosition = float(stagePos['Z'])
+		VV.Macro.Control.WaitFor('VV.Stage.IsMoving', "==", False)
 		# acquire setting1
 		VV.Acquire.WaveLength.Current = 1
 		VV.Acquire.WaveLength.Illumination ='Yannick-conf405withBF'
@@ -69,12 +70,16 @@ for timepoint in range(TimePoints):
 		VV.Window.CloseAll(False)
 
 	# wait for next time-point
+	currenttime = datetime.datetime.now()
+	print (currenttime.strftime("series acquistion ended at %H:%M:%S"))
 	nexttime = timestart + datetime.timedelta(0, (timepoint+1)*TimeInterval)
 	if timepoint+1 == TimePoints:
 		print ("Done")
 		break
 	print (nexttime.strftime("Next time-point at %H:%M:%S"))
-	VV.Macro.Control.Delay(((nexttime-time0).total_seconds())*1000,'ms')
+	delay = nexttime-currenttime
+	print ("still so much to wait... "+str(delay.seconds))
+	VV.Macro.Control.Delay(delay.seconds,'sec')
 
 
 VV.Acquire.Sequence.BaseName = basename
