@@ -30,21 +30,21 @@ def generateHeightImage(width, height, calibration, cX, cY, cZ):
 	return outputImage
 
 
-def saveHeightImage(heightImageHandle, focusMin, focusMax):
+def saveHeightImage(folder, heightImageHandle, focusMin, focusMax):
 	# the global variables focusmin and focumax are used to display the focus map image with stretched histogram values.
 	SetGlobalVar('ch.fmi.VV.focusMin', focusMin)
 	SetGlobalVar('ch.fmi.VV.focusMax', focusMax)
 	# select and save the focus map image
 	VV.Window.Selected.Handle = heightImageHandle
-	VV.File.SaveAs(os.path.join(os.getenv("TEMP"), 'TmpFocusImage.tif'), True)
+	VV.File.SaveAs(os.path.join(folder, 'FocusImage.tif'), True)
 
 
-def loadHeightImage():
+def loadHeightImage(folder):
 	# the global variables focusmin and focumax are used to display the focus map image with stretched histogram values.
 	focusMin = GetGlobalVar('ch.fmi.VV.focusMin')
 	focusMax = GetGlobalVar('ch.fmi.VV.focusMax')
 	# open the image and create a CVmat matrix with the instensity values
-	VV.File.Open(os.path.join(os.getenv("TEMP"), 'TmpFocusImage.tif'))
+	VV.File.Open(os.path.join(folder, 'FocusImage.tif'))
 	w = VV.Image.Width
 	h = VV.Image.Height
 	heightImageRead = CvMat(h,w,MatrixType.U16C1)
@@ -166,8 +166,8 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 	return imgTiles
 
 
-def saveTileList(roiNumber, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints):
-	stageListFile = os.path.join(baseDir, baseName + "_Region-" + str(roiNumber) + "_nTiles-" + str(len(imgCentersX)).zfill(3)+"_"+".stg")
+def saveTileList(roiNumber, folder, baseName, imgCentersX, imgCentersY, imgFocusPoints):
+	stageListFile = os.path.join(folder, baseName + "_Region-" + str(roiNumber) + "_nTiles-" + str(len(imgCentersX)).zfill(3)+"_"+".stg")
 	target = open(stageListFile, 'w')
 	target.write("\"Stage Memory List\", Version 5.0\n0, 0, 0, 0, 0, 0, 0, \"microns\", \"microns\"\n0\n"+str(len(imgCentersX))+"\n")
 	for i in range(len(imgCentersX)):
@@ -197,21 +197,13 @@ def configDialog():
 			condition = True
 	# create a dialog window
 	VV.Macro.InputDialog.Initialize("Experiment parameters.    (C)2017. J. Eglinger & L. Gelman, FAIM - FMI", True)
-	VV.Macro.InputDialog.AddStringVariable("Basename", "basename", VV.Acquire.Sequence.BaseName)
 	VV.Macro.InputDialog.AddStringVariable("E-mail address", "mailAdresse", emailAdresse)
-	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
-		VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)
-	if (condition == True):
-		VV.Macro.InputDialog.AddBoolVariable("Re-use Saved Lists of Positions?", "reusePositions", False)
+	VV.Macro.InputDialog.AddBoolVariable("Re-use focus map?", "reusefocusmap", False)
+	VV.Macro.InputDialog.AddBoolVariable("Re-use Saved Lists of Positions?", "reusePositions", False)
 	VV.Macro.InputDialog.Width=450
 	VV.Macro.InputDialog.Show()
-	# assign new values to doReUse and doReUse2 if choice was displayed in dialog window
-	if os.path.exists(os.path.join(tempDir, 'TmpFocusImage.tif')):
-		doReUse = reusefocusmap
-	if condition == True:
-		doReUse2 = reusePositions
 	# return results
-	return (basename[:-1] if basename.endswith('_') else basename), doReUse, doReUse2, listSTGfiles, mailAdresse
+	return reusefocusmap, reusePositions, listSTGfiles, mailAdresse
 
 
 def stagePosDialog(listSTGfiles):
@@ -231,9 +223,8 @@ def stagePosDialog(listSTGfiles):
 	return myList
 
 
-def restoreFocusPositions(): # loads back the positions entered to calculate the focus map
-	tempDir = os.getenv("TEMP")
-	posList = tempDir + "\\PositionList.stg"
+def restoreFocusPositions(folder): # loads back the positions entered to calculate the focus map
+	posList = os.path.join(folder, "PositionList.stg")
 	if os.path.isfile(posList):
 		VV.Acquire.Stage.PositionList.Load(posList)
 
@@ -242,10 +233,10 @@ def restoreRegions(regionFileName):
 	VV.Edit.Regions.Load(regionFileName)
 
 
-def writeTileConfig(baseDir, stgFile, baseName, cal): #creates a txt file with the list of postions for stitching in Fiji
+def writeTileConfig(folder, stgFile, baseName, cal): #creates a txt file with the list of postions for stitching in Fiji
 	# open the list of positions in stgFile as f, and create a TileConfiguration file for imageJ as tcFile
-	f = open(os.path.join(baseDir,stgFile))
-	tcFile = open(os.path.join(baseDir, baseName + "_TileConfiguration.txt"), "w")
+	f = open(os.path.join(folder,stgFile))
+	tcFile = open(os.path.join(folder, baseName + "_TileConfiguration.txt"), "w")
 	# dimension (2D versus 3D stacks) must be specified for imageJ stitcher
 	dim = "3" if VV.Acquire.Z.Series else "2"
 	# write headers in tcFile
@@ -283,18 +274,11 @@ def initializeUI():
 	VV.Acquire.Stage.SeriesType = 'PositionList'
 
 
-def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin):
+def getStgFileList(overviewHandle, stgFileList, baseName, dataFolder, infoFolder, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin):
 	if reusePositions:
-		regionImageHandle = VV.Window.GetHandle.Empty
-		focusImageHandle = VV.Window.GetHandle.Empty
-		return regionImageHandle, focusImageHandle, stagePosDialog(stgFileList)
+		return stagePosDialog(stgFileList)
 	else:
 		stgFileList = []
-		overviewName = VV.File.Info.Name
-		if not overviewName.endswith("_OVERVIEW.tif"):
-			overviewName = os.path.join(baseDir, baseName+'_OVERVIEW.tif')
-			VV.File.SaveAs(overviewName, True)
-		SetGlobalVar('ch.fmi.VV.lastOverview', overviewName)
 		# Save all regions and then unselect 
 		regionFileName = "MultiTileRegion.rgn"
 		VV.Edit.Regions.Save(regionFileName)
@@ -337,15 +321,13 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 
 		VV.Image.WriteFromPointer(imageWithRegion.Data, he, wi)
 		VV.Edit.Regions.ClearAll()
-		VV.Window.Selected.Top = ctypes.windll.user32.GetSystemMetrics(1)/3 + 20
-		VV.Window.Selected.Left = 10
-		VV.Window.Selected.Width=ctypes.windll.user32.GetSystemMetrics(0)/4
-
-		path = os.path.join(baseDir, baseName+'_regions.tif')
+		path = os.path.join(infoFolder, baseName+'_regions.tif')
 		VV.File.SaveAs(path, True)
-		regionImageHandle = VV.Window.GetHandle.Active
+		#regionImageHandle = VV.Window.GetHandle.Active
+		VV.Window.Selected.Close(False)
 
 		# Create Focus Map
+		VV.Window.Selected.Handle = overviewHandle
 		VV.Window.Active.Handle = overviewHandle
 		VV.Window.Regions.Active.IsValid = False
 		scale = int((he/512+wi/512)/4)+1
@@ -355,16 +337,12 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 			focusMin = float(min(cZ))
 			focusMax = float(max(cZ))
 			displayHeightImage(heightImage, focusMin, focusMax, regionFileName, scale, int(VV.Image.Width/scale), int(VV.Image.Height/scale))
-			saveHeightImage(VV.Window.Active.Handle, focusMin, focusMax)
+			saveHeightImage(infoFolder, VV.Window.Active.Handle, focusMin, focusMax)
+			VV.Window.Selected.Close(False)
 		else:
 			# load image, get data as CvMat, un-normalize with min and max
-			heightImage = loadHeightImage()
+			heightImage = loadHeightImage(infoFolder)
 
-		# Select and resize the image with focus map
-		focusImageHandle = VV.Window.Selected.Handle
-		VV.Window.Selected.Top = ctypes.windll.user32.GetSystemMetrics(1)/3 +60
-		VV.Window.Selected.Left = 30
-		VV.Window.Selected.Width=ctypes.windll.user32.GetSystemMetrics(0)/4
 		# Select the overview image
 		VV.Window.Active.Handle = overviewHandle
 		VV.Window.Selected.Handle = overviewHandle
@@ -408,124 +386,123 @@ def getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap
 					dummy, focusTile = heightImage.GetSubRect(CvRect(leftscaled, topscaled, widthscaled, heightscaled))
 					imgFocusPoints.append(focusTile.Avg().Val0)
 			# saves coordinates list / array for acquisition
-			stgFileList.append(saveTileList(r+1, baseDir, baseName, imgCentersX, imgCentersY, imgFocusPoints))
+			stgFileList.append(saveTileList(r+1, dataFolder, baseName, imgCentersX, imgCentersY, imgFocusPoints))
 			
 		VV.Window.Selected.Handle = overviewHandle
 		restoreRegions(regionFileName)
 
 	# return results	
-	return regionImageHandle, focusImageHandle, stgFileList
+	return stgFileList
 
 
 # ***************
 # MAIN Function
+
 def main():
 
-	# Initialization
-	initializeUI()
-	overviewHandle = VV.Window.GetHandle.Active
-	# The list of positions entered to create the focus map is parsed into 3 arrays containing the X, Y, and Z coordinates
-	cX, cY, cZ = parsePositions()
-	# get Magnification, binning and ratio between overview acquisition and small tiles acquisition 
-	magnificationRatio = float(VV.Magnification.Calibration.Value)/float(VV.Image.Calibration.Value)
-	bin = VV.Acquire.Binning
-	cal = VV.Image.Calibration.Value
-	# initialisation of variables
-	reuseFocusMap = False
-	reusePositions = False
-	baseDir = VV.Acquire.Sequence.Directory
-	stgFileList = []
-	mailText = ""
-	# get information from user about tile experiment
-	baseName, reuseFocusMap, reusePositions, stgFileList, mailAdresse = configDialog()
-	VV.Acquire.Sequence.BaseName = baseName
-	origBaseName = baseName
-	regionImageHandle, focusImageHandle, stgFileList = getStgFileList(overviewHandle, stgFileList, baseName, baseDir, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin)
+	try:
+		origBaseName = VV.Acquire.Sequence.BaseName
+		origBaseDir = VV.Acquire.Sequence.Directory
+		baseName = VV.Acquire.Sequence.BaseName
+		dataDir = os.path.join(origBaseDir, baseName + datetime.datetime.now().strftime("_%Y-%m-%d_%H-%M"))
+		infoDir = os.path.join(dataDir, "Tile_Info")
+		os.mkdir(dataDir)
+		os.mkdir(infoDir)
+		VV.Acquire.Sequence.Directory = dataDir
+		# Initialization
+		initializeUI()
+		overviewHandle = VV.Window.GetHandle.Active
+		VV.File.SaveAs(os.path.join(infoDir, "Overview.tif"), True)
+		VV.Edit.Regions.Save(os.path.join(infoDir, "Regions.rgn"))
+		# The list of positions entered to create the focus map is parsed into 3 arrays containing the X, Y, and Z coordinates
+		cX, cY, cZ = parsePositions()
+		# get Magnification, binning and ratio between overview acquisition and small tiles acquisition 
+		magnificationRatio = float(VV.Magnification.Calibration.Value)/float(VV.Image.Calibration.Value)
+		bin = VV.Acquire.Binning
+		cal = VV.Image.Calibration.Value
+		# initialisation of variables
+		reuseFocusMap = False
+		reusePositions = False
+		stgFileList = []
+		mailText = ""
+
+		# get information from user about tile experiment
+		reuseFocusMap, reusePositions, stgFileList, mailAdresse = configDialog()
+
+		stgFileList = getStgFileList(overviewHandle, stgFileList, baseName, dataDir, infoDir, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin)
 	
-	# last user warning before start.
-	VV.Macro.MessageBox.ShowAndWait("Please check parameters in the Acquire window (i.e. z-stack and multi-wavelengths options)", "Check...", False)
+		# last user warning before start.
+		VV.Macro.MessageBox.ShowAndWait("Please check parameters in the Acquire window (i.e. z-stack and multi-wavelengths options)", "Check...", False)
 
-	# close Region ID Image (so that Robocaopy can copy it)
-	try:
-		VV.Window.Selected.Handle = regionImageHandle
-		VV.Window.Selected.Close(False)
-	except:
-		pass
-	# close Focus Image (so that Robocaopy can copy it)
-	try:
-		VV.Window.Selected.Handle = focusImageHandle
-		VV.Window.Selected.Close(False)
-	except:
-		pass
-	# read from name the number of tiles in each region formated as 3digit number
-	numberTilesEachRegion = []
-	for stgFile in (stgFileList):
-		index = stgFile.find("_nTiles-")+8
-		numberTilesEachRegion.append(int(stgFile[index:-len(stgFile)+index+3]))
+		# read from name the number of tiles in each region formated as 3digit number
+		numberTilesEachRegion = []
+		for stgFile in (stgFileList):
+			index = stgFile.find("_nTiles-")+8
+			numberTilesEachRegion.append(int(stgFile[index:-len(stgFile)+index+3]))
 
-	# start Acquisition per se
-	# record starting time for further estiomation of full acquisition time
-	timeStart = datetime.datetime.now()
-	print (timeStart.strftime("\nExperiment started at %H:%M:%S"))
-	# loop through all regions and acquires tiles
-	for count, stgFile in enumerate(stgFileList):
-		if count == 1: # estimate time for acquisition of all regions based on time elapsed for region 0 (code runs aonly once)
-			timeFirstRegion = datetime.datetime.now()
-			diff = timeFirstRegion - timeStart
-			timeAcquisitionFirstRegion = diff.total_seconds()
-			timePerTile = timeAcquisitionFirstRegion / numberTilesEachRegion[0]
-			print ("\n____________\nInformation about duration of regions acquisition")
-			for k in range(len(numberTilesEachRegion)):
-				myString1 = "Time to acquire region "+str(k+1)+" (containing "+str(numberTilesEachRegion[k])+" tiles) = "+str(int(timePerTile*numberTilesEachRegion[k]))+" sec"
-				if numberTilesEachRegion[0] == 0:
-					numberTilesEachRegion[0] = 1
-				timeStart = timeStart + diff/numberTilesEachRegion[0]*numberTilesEachRegion[k]
-				myString2 = ""
-				if k>0:
-					myString2 = (" - Region "+str(k+1)+" will finish at "+timeStart.strftime("%H:%M:%S"))
-					print(myString2)
-				mailText=mailText+myString1+"\n"+myString2+"\n"
-			# send an e-mail with information about all region scan duration to user
-			InfoMail = EmailToolbox.Email(destin = mailAdresse, title = "Acquisition Schedule", message = mailText)
-			InfoMail.send()
-		# Acquire module per se
-		VV.Acquire.Stage.PositionList.Load(os.path.join(baseDir,stgFile))
-		m = re.match(r'.*\\([^\\]+).stg', os.path.join(baseDir,stgFile))
-		baseName = m.group(1)
-		VV.Acquire.Sequence.BaseName = baseName
-		print ("\nNow acquiring " + baseName +"...")
-		VV.Acquire.Sequence.Start()
-		VV.Macro.Control.WaitFor('VV.Acquire.IsRunning', "==", False)
-		VV.Window.Selected.Handle = VV.Window.Active.Handle
+		# start Acquisition per se
+		# record starting time for further estiomation of full acquisition time
+		timeStart = datetime.datetime.now()
+		print (timeStart.strftime("\nExperiment started at %H:%M:%S"))
+		# loop through all regions and acquires tiles
+		for count, stgFile in enumerate(stgFileList):
+			if count == 1: # estimate time for acquisition of all regions based on time elapsed for region 0 (code runs aonly once)
+				timeFirstRegion = datetime.datetime.now()
+				diff = timeFirstRegion - timeStart
+				timeAcquisitionFirstRegion = diff.total_seconds()
+				timePerTile = timeAcquisitionFirstRegion / numberTilesEachRegion[0]
+				print ("\n____________\nInformation about duration of regions acquisition")
+				for k in range(len(numberTilesEachRegion)):
+					myString1 = "Time to acquire region "+str(k+1)+" (containing "+str(numberTilesEachRegion[k])+" tiles) = "+str(int(timePerTile*numberTilesEachRegion[k]))+" sec"
+					if numberTilesEachRegion[0] == 0:
+						numberTilesEachRegion[0] = 1
+					timeStart = timeStart + diff/numberTilesEachRegion[0]*numberTilesEachRegion[k]
+					myString2 = ""
+					if k>0:
+						myString2 = (" - Region "+str(k+1)+" will finish at "+timeStart.strftime("%H:%M:%S"))
+						print(myString2)
+					mailText=mailText+myString1+"\n"+myString2+"\n"
+				# send an e-mail with information about all region scan duration to user
+				InfoMail = EmailToolbox.Email(destin = mailAdresse, title = "Acquisition Schedule", message = mailText)
+				InfoMail.send()
+			# Acquire module per se
+			VV.Acquire.Stage.PositionList.Load(os.path.join(dataDir,stgFile))
+			m = re.match(r'.*\\([^\\]+).stg', os.path.join(dataDir,stgFile))
+			baseName = m.group(1)
+			VV.Acquire.Sequence.BaseName = baseName
+			print ("\nNow acquiring " + baseName +"...")
+			VV.Acquire.Sequence.Start()
+			VV.Macro.Control.WaitFor('VV.Acquire.IsRunning', "==", False)
+			VV.Window.Selected.Handle = VV.Window.Active.Handle
+		 
+			# write the TileConfiguration file for Fiji
+#			ndBaseName = VV.File.Info.NameOnly
+#			ndBaseName = ndBaseName[0:ndBaseName.rfind('_')]
+#			newCalibration = VV.Magnification.Calibration.Value
+#			writeTileConfig(dataDir, stgFile, ndBaseName, newCalibration * bin)
 		
-		# write the TileConfiguration file for Fiji
-		ndBaseName = VV.File.Info.NameOnly
-		ndBaseName = ndBaseName[0:ndBaseName.rfind('_')]
-		newCalibration = VV.Magnification.Calibration.Value
-		writeTileConfig(baseDir, stgFile, ndBaseName, newCalibration * bin)
+			# close image windows after acquisition
+			VV.Window.Selected.Close(False)
 		
-		# close image windows after acquisition
-		VV.Window.Selected.Close(False)
-		
-	# Send a mail to user, restore original base name and positions for the focus map
-	FinalMail = EmailToolbox.Email(destin = mailAdresse, title = "Acquisition finished", message = "All regions have been acquired")
-	FinalMail.send()
-	VV.Acquire.Sequence.BaseName = origBaseName
-	restoreFocusPositions()
-	print ("All regions have been acquired...")
+		# Send a mail to user, restore original base name and positions for the focus map
+		FinalMail = EmailToolbox.Email(destin = mailAdresse, title = "Acquisition finished", message = "All regions have been acquired")
+		FinalMail.send()
+		VV.Acquire.Sequence.BaseName = origBaseName
+		VV.Acquire.Sequence.Directory = origBaseDir
+		restoreFocusPositions(infoDir)
+		print ("All regions have been acquired...")
 
-
+	except KeyboardInterrupt:
+		restoreFocusPositions(infoDir)
+		VV.File.Open(os.path.join(infoDir, "Overview.tif"))
+		VV.Window.Selected.Handle = VV.Window.GetHandle.Active
+		VV.Edit.Regions.Load(os.path.join(infoDir, "Regions.rgn"))
+		VV.Acquire.Sequence.BaseName = origBaseName
+		VV.Acquire.Sequence.Directory = origBaseDir
+	
+	
 # ***************
 # Launching the code
-try:
-	origBN = VV.Acquire.Sequence.BaseName
-	main()
-except KeyboardInterrupt:
-	restoreFocusPositions()
-	path = GetGlobalVar('ch.fmi.VV.lastOverview')
-	handle = VV.File.Open(path)
-	regionFileName = "MultiTileRegion.rgn"
-	VV.Window.Selected.Handle = VV.Window.GetHandle.Active
-	restoreRegions(regionFileName)
-	VV.Acquire.Sequence.BaseName = origBN
 
+main()
+	
