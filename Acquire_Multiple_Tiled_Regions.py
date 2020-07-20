@@ -224,9 +224,9 @@ def stagePosDialog(listSTGfiles):
 
 
 def restoreFocusPositions(folder): # loads back the positions entered to calculate the focus map
-	posList = os.path.join(folder, "PositionList.stg")
-	if os.path.isfile(posList):
-		VV.Acquire.Stage.PositionList.Load(posList)
+	path = os.path.join(folder, "PositionListForFocusMap.stg")
+	if os.path.isfile(path):
+		VV.Acquire.Stage.PositionList.Load(path)
 
 
 def restoreRegions(regionFileName):
@@ -415,7 +415,7 @@ def main():
 		VV.File.SaveAs(os.path.join(infoDir, "Overview.tif"), True)
 		VV.Edit.Regions.Save(os.path.join(infoDir, "Regions.rgn"))
 		# The list of positions entered to create the focus map is parsed into 3 arrays containing the X, Y, and Z coordinates
-		cX, cY, cZ = parsePositions()
+		cX, cY, cZ = parsePositions(infoDir)
 		# get Magnification, binning and ratio between overview acquisition and small tiles acquisition 
 		magnificationRatio = float(VV.Magnification.Calibration.Value)/float(VV.Image.Calibration.Value)
 		bin = VV.Acquire.Binning
