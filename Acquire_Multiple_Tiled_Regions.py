@@ -297,7 +297,7 @@ def getStgFileList(overviewHandle, stgFileList, baseName, dataFolder, infoFolder
 		he = VV.Image.Height
 		wi = VV.Image.Width
 		VV.Process.DuplicatePlane()
-		VV.File.Info.Name = "Region Identification in "+baseName
+		VV.File.Info.Name = 'Region_Identification_Image'
 		zoom = VV.Window.Selected.ZoomPercent
 		imageWithRegion = CvMat(he,wi,MatrixType.U16C1)
 		imageWithRegion.Set(CvScalar(0))
@@ -321,8 +321,11 @@ def getStgFileList(overviewHandle, stgFileList, baseName, dataFolder, infoFolder
 
 		VV.Image.WriteFromPointer(imageWithRegion.Data, he, wi)
 		VV.Edit.Regions.ClearAll()
-		path = os.path.join(infoFolder, baseName+'_regions.tif')
-		VV.File.SaveAs(path, True)
+		path = os.path.join(infoFolder, 'Region_Identification_Image.tif')
+		try:
+			VV.File.SaveAs(path, True)
+		except:
+			pass
 		#regionImageHandle = VV.Window.GetHandle.Active
 		VV.Window.Selected.Close(False)
 
