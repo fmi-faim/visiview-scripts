@@ -15,6 +15,7 @@ import focusmap
 
 
 def generateHeightImage(width, height, calibration, cX, cY, cZ):
+	"""Compute a focus map from given x,y,z positions"""
 	# Get Image corner coords as stage coordinates
 	xLeft, yTop = VV.File.ConvertImageCoordinatesToStageCoordinates(0,0)
 	# Triangulate list and corner points
@@ -31,6 +32,7 @@ def generateHeightImage(width, height, calibration, cX, cY, cZ):
 
 
 def saveHeightImage(folder, heightImageHandle, focusMin, focusMax):
+	"""Save a VisiView image and store focus min and max values."""
 	# the global variables focusmin and focumax are used to display the focus map image with stretched histogram values.
 	SetGlobalVar('ch.fmi.VV.focusMin', focusMin)
 	SetGlobalVar('ch.fmi.VV.focusMax', focusMax)
@@ -40,6 +42,10 @@ def saveHeightImage(folder, heightImageHandle, focusMin, focusMax):
 
 
 def loadHeightImage(folder):
+	"""Load the focus map image from the specified folder.
+
+	Return CvMat scaled with focus min and max values.
+	"""
 	# the global variables focusmin and focumax are used to display the focus map image with stretched histogram values.
 	focusMin = GetGlobalVar('ch.fmi.VV.focusMin')
 	focusMax = GetGlobalVar('ch.fmi.VV.focusMax')
@@ -56,7 +62,8 @@ def loadHeightImage(folder):
 
 
 def displayHeightImage(heightImage, focusMin, focusMax, regionFileName, scale, heightImageW, heightImageH):
-	# set values between 0 and 65000 for more contrast in display
+	"""Display focus map image, scaled to the 16-bit range"""
+	# set values between 0 and 65535 for more contrast in display
 	heightImageNormalized = heightImage if (focusMax==focusMin) else (heightImage-CvScalar(focusMin))*65535/(focusMax-focusMin)
 	# create a 16-bit image
 	heightImageU16 = CvMat(heightImageH, heightImageW, MatrixType.U16C1)
@@ -68,11 +75,16 @@ def displayHeightImage(heightImage, focusMin, focusMax, regionFileName, scale, h
 
 
 def displayImage(cvImage):
+	"""Display an 8-bit image."""
 	VV.Process.CreateEmptyPlane('Monochrome8',VV.Image.Width, VV.Image.Height)
 	VV.Image.WriteFromPointer(cvImage.Data, VV.Image.Width, VV.Image.Height)
 
 
 def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, heightImage):
+	"""Compute tile positions for the given region.
+
+	Return a list of CvRect
+	"""
 	# Select next region
 	VV.Window.Regions.Active.Index = regionIndex
 	# TODO make user-definable
@@ -167,6 +179,10 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 
 
 def saveTileList(roiNumber, folder, baseName, imgCentersX, imgCentersY, imgFocusPoints):
+	"""Save single tile positions for the current region.
+
+	Return full path of the saved file.
+	"""
 	stageListFile = os.path.join(folder, baseName + "_Region-" + str(roiNumber) + "_nTiles-" + str(len(imgCentersX)).zfill(3)+"_"+".stg")
 	target = open(stageListFile, 'w')
 	target.write("\"Stage Memory List\", Version 5.0\n0, 0, 0, 0, 0, 0, 0, \"microns\", \"microns\"\n0\n"+str(len(imgCentersX))+"\n")
@@ -179,6 +195,10 @@ def saveTileList(roiNumber, folder, baseName, imgCentersX, imgCentersY, imgFocus
 
 
 def configDialog():
+	"""Display main configuration dialog.
+
+	Return tuple of config parameters.
+	"""
 	tempDir = os.getenv("TEMP")
 	doReUse = False
 	doReUse2 = False
@@ -207,6 +227,10 @@ def configDialog():
 
 
 def stagePosDialog(listSTGfiles):
+	"""Display configuration dialog for stage positions.
+
+	Return list of selected stg files.
+	"""
 	myList = [] # will contain the postion list files
 	global myVar
 	myVar = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
@@ -223,17 +247,23 @@ def stagePosDialog(listSTGfiles):
 	return myList
 
 
-def restoreFocusPositions(folder): # loads back the positions entered to calculate the focus map
+def restoreFocusPositions(folder):
+	"""Load back the positions entered to calculate the focus map."""
 	path = os.path.join(folder, "PositionListForFocusMap.stg")
 	if os.path.isfile(path):
 		VV.Acquire.Stage.PositionList.Load(path)
 
 
 def restoreRegions(regionFileName):
+	"""Restore regions from the given file."""
 	VV.Edit.Regions.Load(regionFileName)
 
 
-def writeTileConfig(folder, stgFile, baseName, cal): #creates a txt file with the list of postions for stitching in Fiji
+def writeTileConfig(folder, stgFile, baseName, cal):
+	"""Create a txt file with the list of positions for stitching in Fiji
+
+	TODO remove, not required any more
+	"""
 	# open the list of positions in stgFile as f, and create a TileConfiguration file for imageJ as tcFile
 	f = open(os.path.join(folder,stgFile))
 	tcFile = open(os.path.join(folder, baseName + "_TileConfiguration.txt"), "w")
@@ -261,6 +291,7 @@ def writeTileConfig(folder, stgFile, baseName, cal): #creates a txt file with th
 
 
 def initializeUI():
+	"""Arrange windows in the UI, and set acquire settings."""
 	# Clear and show Print Window
 	VV.Macro.PrintWindow.Clear()
 	VV.Macro.PrintWindow.IsVisible = True
@@ -275,6 +306,7 @@ def initializeUI():
 
 
 def getStgFileList(overviewHandle, stgFileList, baseName, dataFolder, infoFolder, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin):
+	"""Compute all sets of tile positions."""
 	if reusePositions:
 		return stagePosDialog(stgFileList)
 	else:
