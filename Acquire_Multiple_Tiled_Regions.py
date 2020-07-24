@@ -13,6 +13,19 @@ import ctypes
 import EmailToolbox
 import focusmap
 
+def restoreDefaults(folder, handle):
+	try:
+		restoreFocusPositions(folder)
+	except:
+		print("Could not restore Focus Positions")
+
+	VV.Window.Selected.Handle = handle
+
+	try:
+		VV.Edit.Regions.Load(os.path.join(folder, "Regions.rgn"))
+	except:
+		print("Could not reload regions from Regions.rgn")
+
 
 def generateHeightImage(width, height, calibration, cX, cY, cZ):
 	"""Compute a focus map from given x,y,z positions"""
@@ -389,13 +402,18 @@ def getStgFileList(overviewHandle, baseName, dataFolder, infoFolder, reuseFocusM
 		saveHeightImage(infoFolder, VV.Window.Active.Handle, focusMin, focusMax)
 		VV.Window.Selected.Close(False)
 	else:
-		# load image, get data as CvMat, un-normalize with min and max
-		heightImage = loadHeightImage(infoFolder)
-		# Select the overview image
+		path = os.path.abspath(os.path.join(dataFolder, os.pardir))
+		VV.Macro.InputDialog.Initialize("Please indicate folder with Focus Map", True)
+		VV.Macro.InputDialog.AddDirectoryVariable("Folder: ", "FocusMapFolder", path)
+		VV.Macro.InputDialog.Show()
+		heightImage = loadHeightImage(FocusMapFolder)
+			
+	# Select the overview image
 	VV.Window.Active.Handle = overviewHandle
 	VV.Window.Selected.Handle = overviewHandle
+	
 	# Create binary mask (CvMat) with all regions
-	binaryMask = CvMat(VV.Image.Height, VV.Image.Width, MatrixType.U8C1)
+	binaryMask = CvMat(VV.Image.Height, VV.Image.Width, MatrixType.U8C1)  
 	binaryMask.Set(CvScalar(0))
 	VV.Edit.Regions.ClearAll()
 	VV.Edit.Regions.Load(regionFileName)
@@ -446,14 +464,14 @@ def main():
 		origBaseName = VV.Acquire.Sequence.BaseName
 		origBaseDir = VV.Acquire.Sequence.Directory
 		baseName = VV.Acquire.Sequence.BaseName
-		dataDir = os.path.join(origBaseDir, baseName + datetime.datetime.now().strftime("_%Y-%m-%d_%H-%M"))
+		overviewHandle = VV.Window.GetHandle.Active
+		dataDir = os.path.join(origBaseDir, baseName + datetime.datetime.now().strftime("_%Y-%m-%d_%H-%M-%S"))
 		infoDir = os.path.join(dataDir, "Tile_Info")
 		os.mkdir(dataDir)
 		os.mkdir(infoDir)
 		VV.Acquire.Sequence.Directory = dataDir
 		# Initialization
 		initializeUI()
-		overviewHandle = VV.Window.GetHandle.Active
 		VV.File.SaveAs(os.path.join(infoDir, "Overview.tif"), True)
 		VV.Edit.Regions.Save(os.path.join(infoDir, "Regions.rgn"))
 		# The list of positions entered to create the focus map is parsed into 3 arrays containing the X, Y, and Z coordinates
@@ -537,13 +555,16 @@ def main():
 		restoreFocusPositions(infoDir)
 		print ("All regions have been acquired...")
 
-	except KeyboardInterrupt:
-		restoreFocusPositions(infoDir)
-		VV.File.Open(os.path.join(infoDir, "Overview.tif"))
-		VV.Window.Selected.Handle = VV.Window.GetHandle.Active
-		VV.Edit.Regions.Load(os.path.join(infoDir, "Regions.rgn"))
+		
+	except BaseException as e:
+		print ("\n_____________________\nWARNING\n")
+		print ("Macro interruption\n")
+		print (e)
+		print (type(e))
 		VV.Acquire.Sequence.BaseName = origBaseName
 		VV.Acquire.Sequence.Directory = origBaseDir
+		restoreDefaults(infoDir, overviewHandle)
+
 	
 	
 # ***************
