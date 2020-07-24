@@ -322,6 +322,7 @@ def getStgFileList(overviewHandle, stgFileList, baseName, dataFolder, infoFolder
 			if regionSize <= 150:
 				VV.Window.Regions.Active.Remove()
 		VV.Edit.Regions.Save(regionFileName)
+		
 		# Create an overview black image with the regions numbered
 		VV.Window.Active.Handle = overviewHandle
 		VV.Window.Selected.Handle = overviewHandle
@@ -357,7 +358,7 @@ def getStgFileList(overviewHandle, stgFileList, baseName, dataFolder, infoFolder
 		try:
 			VV.File.SaveAs(path, True)
 		except:
-			pass
+			print("WARNING: Region_Identification_Image.tif could not be saved")
 		#regionImageHandle = VV.Window.GetHandle.Active
 		VV.Window.Selected.Close(False)
 
