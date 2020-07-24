@@ -193,6 +193,26 @@ def saveTileList(roiNumber, folder, baseName, imgCentersX, imgCentersY, imgFocus
 	target.close()
 	return(stageListFile)
 
+def getOldSTGfilesList():
+
+	VV.Macro.InputDialog.Initialize("Indicate where the STG files a re saved", True)
+	VV.Macro.InputDialog.AddDirectoryVariable("Folder with STG files: ", "STGfolder", "")
+	VV.Macro.InputDialog.Show()
+
+	listSTGfiles = []
+	# check whether position list files (*.stg) for this specific overview exist already
+	onlyFiles = [f for f in os.listdir(STGfolder) if os.path.isfile(os.path.join(STGfolder, f))]
+	for f in onlyFiles:
+		if (f.split(".")[1:][0] == "stg"):
+			listSTGfiles.append(f)
+
+	finalSTGfilesList = stagePosDialog(listSTGfiles)
+	
+	for index, f in enumerate(finalSTGfilesList):
+		finalSTGfilesList[index] = os.path.join(STGfolder, f)
+	
+	# return results
+	return finalSTGfilesList
 
 def configDialog():
 	"""Display main configuration dialog.
@@ -209,12 +229,7 @@ def configDialog():
 	# removing the underscore avoids bugs later in the acquisition and stitching workflow
 	if baseN.endswith('_'):
 		baseN = baseN[:-1]
-	# check whether position list files (*.stg) for this specific overview exist already
-	onlyFiles = [f for f in os.listdir(VV.Acquire.Sequence.Directory) if os.path.isfile(os.path.join(VV.Acquire.Sequence.Directory, f))]
-	for f in onlyFiles:
-		if (f.split(".")[1:][0] == "stg") & (f.split(".")[0].startswith(baseN)==1):
-			listSTGfiles.append(f)
-			condition = True
+
 	# create a dialog window
 	VV.Macro.InputDialog.Initialize("Experiment parameters.    (C)2017. J. Eglinger & L. Gelman, FAIM - FMI", True)
 	VV.Macro.InputDialog.AddStringVariable("E-mail address", "mailAdresse", emailAdresse)
@@ -222,8 +237,9 @@ def configDialog():
 	VV.Macro.InputDialog.AddBoolVariable("Re-use Saved Lists of Positions?", "reusePositions", False)
 	VV.Macro.InputDialog.Width=450
 	VV.Macro.InputDialog.Show()
+	
 	# return results
-	return reusefocusmap, reusePositions, listSTGfiles, mailAdresse
+	return reusefocusmap, reusePositions, mailAdresse
 
 
 def stagePosDialog(listSTGfiles):
@@ -305,128 +321,118 @@ def initializeUI():
 	VV.Acquire.Stage.SeriesType = 'PositionList'
 
 
-def getStgFileList(overviewHandle, stgFileList, baseName, dataFolder, infoFolder, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin):
+def getStgFileList(overviewHandle, baseName, dataFolder, infoFolder, reuseFocusMap, cal, cX, cY, cZ, magnificationRatio, bin):
 	"""Compute all sets of tile positions."""
-	if reusePositions:
-		return stagePosDialog(stgFileList)
-	else:
-		stgFileList = []
-		# Save all regions and then unselect 
-		regionFileName = "MultiTileRegion.rgn"
-		VV.Edit.Regions.Save(regionFileName)
-		VV.Window.Regions.Active.IsValid = False
-		#Test size of region and delete it if too small. this is to avoid empty position lists afterwards
-		for r in range(VV.Window.Regions.Count,0,-1):
-			VV.Window.Regions.Active.Index = r
-			regionSize = VV.Window.Regions.Active.Width * VV.Window.Regions.Active.Height
-			if regionSize <= 150:
-				VV.Window.Regions.Active.Remove()
-		VV.Edit.Regions.Save(regionFileName)
-		
-		# Create an overview black image with the regions numbered
-		VV.Window.Active.Handle = overviewHandle
-		VV.Window.Selected.Handle = overviewHandle
-		VV.Window.Regions.Active.IsValid = False
-		he = VV.Image.Height
-		wi = VV.Image.Width
-		VV.Process.DuplicatePlane()
-		VV.File.Info.Name = 'Region_Identification_Image'
-		zoom = VV.Window.Selected.ZoomPercent
-		imageWithRegion = CvMat(he,wi,MatrixType.U16C1)
-		imageWithRegion.Set(CvScalar(0))
-		restoreRegions(regionFileName)
-		polyLines = Array.CreateInstance(Array[CvPoint], 1)
 
-		for r in range(VV.Window.Regions.Count,0,-1):
-			VV.Window.Regions.Active.Index = r
-			points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
-			font = CvFont(FontFace.Italic,int(16/(int(zoom/100*2)+1)),1)
-			font.Thickness = int(16/((int(zoom/100*2)+1)))
-			imageWithRegion.PutText(str(r), CvPoint(CoordX[0]-5,CoordY[0]-5), font, CvScalar(65000))
-			polyLine = Array.CreateInstance(CvPoint, len(CoordX))
-			for i in range(len(CoordX)):
-				polyLine[i] = CvPoint(CoordX[i],CoordY[i])
-			polyLines[0] = polyLine
-			if VV.Window.Regions.Active.Type=='PolyLine':
-				imageWithRegion.DrawPolyLine(polyLines, False, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
-			else:
-				imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
+	stgFileList = []
 
-		VV.Image.WriteFromPointer(imageWithRegion.Data, he, wi)
-		VV.Edit.Regions.ClearAll()
-		path = os.path.join(infoFolder, 'Region_Identification_Image.tif')
-		try:
-			VV.File.SaveAs(path, True)
-		except:
-			print("WARNING: Region_Identification_Image.tif could not be saved")
-		#regionImageHandle = VV.Window.GetHandle.Active
-		VV.Window.Selected.Close(False)
-
-		# Create Focus Map
-		VV.Window.Selected.Handle = overviewHandle
-		VV.Window.Active.Handle = overviewHandle
-		VV.Window.Regions.Active.IsValid = False
-		scale = int((he/512+wi/512)/4)+1
-		SetGlobalVar('ch.fmi.VV.scale', scale)
-		if not reuseFocusMap:
-			heightImage = generateHeightImage(int(VV.Image.Width/scale), int(VV.Image.Height/scale), cal*scale, cX, cY, cZ)
-			focusMin = float(min(cZ))
-			focusMax = float(max(cZ))
-			displayHeightImage(heightImage, focusMin, focusMax, regionFileName, scale, int(VV.Image.Width/scale), int(VV.Image.Height/scale))
-			saveHeightImage(infoFolder, VV.Window.Active.Handle, focusMin, focusMax)
-			VV.Window.Selected.Close(False)
+	# Save all regions and then unselect 
+	regionFileName = "MultiTileRegion.rgn"
+	VV.Edit.Regions.Save(regionFileName)
+	VV.Window.Regions.Active.IsValid = False
+	#Test size of region and delete it if too small. this is to avoid empty position lists afterwards
+	for r in range(VV.Window.Regions.Count,0,-1):
+		VV.Window.Regions.Active.Index = r
+		regionSize = VV.Window.Regions.Active.Width * VV.Window.Regions.Active.Height
+		if regionSize <= 150:
+			VV.Window.Regions.Active.Remove()
+	VV.Edit.Regions.Save(regionFileName)
+	
+	# Create an overview black image with the regions numbered
+	VV.Window.Active.Handle = overviewHandle
+	VV.Window.Selected.Handle = overviewHandle
+	VV.Window.Regions.Active.IsValid = False
+	he = VV.Image.Height
+	wi = VV.Image.Width
+	VV.Process.DuplicatePlane()
+	VV.File.Info.Name = 'Region_Identification_Image'
+	zoom = VV.Window.Selected.ZoomPercent
+	imageWithRegion = CvMat(he,wi,MatrixType.U16C1)
+	imageWithRegion.Set(CvScalar(0))
+	restoreRegions(regionFileName)
+	polyLines = Array.CreateInstance(Array[CvPoint], 1)
+	for r in range(VV.Window.Regions.Count,0,-1):
+		VV.Window.Regions.Active.Index = r
+		points, CoordX, CoordY = VV.Window.Regions.Active.CoordinatesToArrays()
+		font = CvFont(FontFace.Italic,int(16/(int(zoom/100*2)+1)),1)
+		font.Thickness = int(16/((int(zoom/100*2)+1)))
+		imageWithRegion.PutText(str(r), CvPoint(CoordX[0]-5,CoordY[0]-5), font, CvScalar(65000))
+		polyLine = Array.CreateInstance(CvPoint, len(CoordX))
+		for i in range(len(CoordX)):
+			polyLine[i] = CvPoint(CoordX[i],CoordY[i])
+		polyLines[0] = polyLine
+		if VV.Window.Regions.Active.Type=='PolyLine':
+			imageWithRegion.DrawPolyLine(polyLines, False, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
 		else:
-			# load image, get data as CvMat, un-normalize with min and max
-			heightImage = loadHeightImage(infoFolder)
-
+			imageWithRegion.DrawPolyLine(polyLines, True, CvScalar(30000),int(16/((int(zoom/100*2)+1))))
+		VV.Image.WriteFromPointer(imageWithRegion.Data, he, wi)
+	VV.Edit.Regions.ClearAll()
+	path = os.path.join(infoFolder, 'Region_Identification_Image.tif')
+	try:
+		VV.File.SaveAs(path, True)
+	except:
+		print("WARNING: Region_Identification_Image.tif could not be saved")
+	#regionImageHandle = VV.Window.GetHandle.Active
+	VV.Window.Selected.Close(False)
+	# Create Focus Map
+	VV.Window.Selected.Handle = overviewHandle
+	VV.Window.Active.Handle = overviewHandle
+	VV.Window.Regions.Active.IsValid = False
+	scale = int((he/512+wi/512)/4)+1
+	SetGlobalVar('ch.fmi.VV.scale', scale)
+	
+	if not reuseFocusMap:
+		heightImage = generateHeightImage(int(VV.Image.Width/scale), int(VV.Image.Height/scale), cal*scale, cX, cY, cZ)
+		focusMin = float(min(cZ))
+		focusMax = float(max(cZ))
+		displayHeightImage(heightImage, focusMin, focusMax, regionFileName, scale, int(VV.Image.Width/scale), int(VV.Image.Height/scale))
+		saveHeightImage(infoFolder, VV.Window.Active.Handle, focusMin, focusMax)
+		VV.Window.Selected.Close(False)
+	else:
+		# load image, get data as CvMat, un-normalize with min and max
+		heightImage = loadHeightImage(infoFolder)
 		# Select the overview image
-		VV.Window.Active.Handle = overviewHandle
+	VV.Window.Active.Handle = overviewHandle
+	VV.Window.Selected.Handle = overviewHandle
+	# Create binary mask (CvMat) with all regions
+	binaryMask = CvMat(VV.Image.Height, VV.Image.Width, MatrixType.U8C1)
+	binaryMask.Set(CvScalar(0))
+	VV.Edit.Regions.ClearAll()
+	VV.Edit.Regions.Load(regionFileName)
+	print ("Number of regions = "+str(VV.Window.Regions.Count))
+	for r in range(VV.Window.Regions.Count):
 		VV.Window.Selected.Handle = overviewHandle
-		# Create binary mask (CvMat) with all regions
-		binaryMask = CvMat(VV.Image.Height, VV.Image.Width, MatrixType.U8C1)
-		binaryMask.Set(CvScalar(0))
 		VV.Edit.Regions.ClearAll()
 		VV.Edit.Regions.Load(regionFileName)
-
-		print ("Number of regions = "+str(VV.Window.Regions.Count))
-
-		for r in range(VV.Window.Regions.Count):
-			VV.Window.Selected.Handle = overviewHandle
-			VV.Edit.Regions.ClearAll()
-			VV.Edit.Regions.Load(regionFileName)
-			currentTiles = getAcquisitionTiles(r+1, binaryMask, bin, magnificationRatio, heightImage)
-			VV.Edit.Regions.ClearAll()
-
-			for tile in currentTiles:
-				VV.Window.Regions.AddCentered("Rectangle", tile.X+tile.Width/2, tile.Y+tile.Height/2, tile.Width, tile.Height)
-
-			VV.Macro.MessageBox.ShowAndWait("Please Adjust Tiles for region "+str(r+1), "Tile Adjustment", False)
-
-			# Adjust calculated tiles
-			imgFocusPoints = []
-			imgCentersX = []
-			imgCentersY = []
-			# get the coordinates of the re-positioned or newly created regions and saves them in an array
-			for t in range(VV.Window.Regions.Count):
-					VV.Window.Regions.Active.Index = t+1
-					left = VV.Window.Regions.Active.Left
-					leftscaled = int(VV.Window.Regions.Active.Left/scale)
-					width = VV.Window.Regions.Active.Width
-					widthscaled = int(VV.Window.Regions.Active.Width/scale)
-					top = VV.Window.Regions.Active.Top
-					topscaled = int(VV.Window.Regions.Active.Top/scale)
-					height = VV.Window.Regions.Active.Height
-					heightscaled = int(VV.Window.Regions.Active.Height/scale)
-					imgCentersX.append(left+width/2)
-					imgCentersY.append(top+height/2)
-					dummy, focusTile = heightImage.GetSubRect(CvRect(leftscaled, topscaled, widthscaled, heightscaled))
-					imgFocusPoints.append(focusTile.Avg().Val0)
-			# saves coordinates list / array for acquisition
-			stgFileList.append(saveTileList(r+1, dataFolder, baseName, imgCentersX, imgCentersY, imgFocusPoints))
-			
-		VV.Window.Selected.Handle = overviewHandle
-		restoreRegions(regionFileName)
-
+		currentTiles = getAcquisitionTiles(r+1, binaryMask, bin, magnificationRatio, heightImage)
+		VV.Edit.Regions.ClearAll()
+		for tile in currentTiles:
+			VV.Window.Regions.AddCentered("Rectangle", tile.X+tile.Width/2, tile.Y+tile.Height/2, tile.Width, tile.Height)
+		VV.Macro.MessageBox.ShowAndWait("Please Adjust Tiles for region "+str(r+1), "Tile Adjustment", False)
+		# Adjust calculated tiles
+		imgFocusPoints = []
+		imgCentersX = []
+		imgCentersY = []
+		# get the coordinates of the re-positioned or newly created regions and saves them in an array
+		for t in range(VV.Window.Regions.Count):
+			VV.Window.Regions.Active.Index = t+1
+			left = VV.Window.Regions.Active.Left
+			leftscaled = int(VV.Window.Regions.Active.Left/scale)
+			width = VV.Window.Regions.Active.Width
+			widthscaled = int(VV.Window.Regions.Active.Width/scale)
+			top = VV.Window.Regions.Active.Top
+			topscaled = int(VV.Window.Regions.Active.Top/scale)
+			height = VV.Window.Regions.Active.Height
+			heightscaled = int(VV.Window.Regions.Active.Height/scale)
+			imgCentersX.append(left+width/2)
+			imgCentersY.append(top+height/2)
+			dummy, focusTile = heightImage.GetSubRect(CvRect(leftscaled, topscaled, widthscaled, heightscaled))
+			imgFocusPoints.append(focusTile.Avg().Val0)
+		# saves coordinates list / array for acquisition
+		stgFileList.append(saveTileList(r+1, dataFolder, baseName, imgCentersX, imgCentersY, imgFocusPoints))
+		
+	VV.Window.Selected.Handle = overviewHandle
+	restoreRegions(regionFileName)
 	# return results	
 	return stgFileList
 
@@ -463,10 +469,13 @@ def main():
 		mailText = ""
 
 		# get information from user about tile experiment
-		reuseFocusMap, reusePositions, stgFileList, mailAdresse = configDialog()
+		reuseFocusMap, reusePositions, mailAdresse = configDialog()
 
-		stgFileList = getStgFileList(overviewHandle, stgFileList, baseName, dataDir, infoDir, reuseFocusMap, reusePositions, cal, cX, cY, cZ, magnificationRatio, bin)
-	
+		if reusePositions:
+			stgFileList = getOldSTGfilesList()
+		else:
+			stgFileList = getStgFileList(overviewHandle, baseName, dataDir, infoDir, reuseFocusMap, cal, cX, cY, cZ, magnificationRatio, bin)
+
 		# last user warning before start.
 		VV.Macro.MessageBox.ShowAndWait("Please check parameters in the Acquire window (i.e. z-stack and multi-wavelengths options)", "Check...", False)
 
