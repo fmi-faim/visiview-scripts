@@ -1,7 +1,7 @@
 import csv, os
 
-def parsePositions():
-	path = os.getenv("TEMP") + "\\PositionList.stg"
+def parsePositions(folder):
+	path = os.path.join(folder, "PositionListForFocusMap.stg")
 	VV.Acquire.Stage.PositionList.Save(path)
 	fo = open(path)
 	reader = csv.reader(fo)
