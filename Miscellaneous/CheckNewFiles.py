@@ -22,17 +22,20 @@ VV.Macro.InputDialog.AddDirectoryVariable("Select the directory", "directory", "
 VV.Macro.InputDialog.Show()
 
 older_file = ""
-list_of_files = glob.glob(os.path.join(directory,"*"))
+path = os.path.join(directory,"*")
+list_of_files = glob.glob(path)
 latest_file = max(list_of_files, key=os.path.getctime)
+print ("Latest File is: "+ latest_file)
 
 while(latest_file != older_file):
 	older_file = latest_file
-	#list_of_files = glob.glob(r'C:\temp\Nikolas\*')
-	list_of_files = glob.glob(os.path.join(directory,"*"))
-	latest_file = max(list_of_files, key=os.path.getctime)
-	print ("Latest File in the Folder: "+latest_file)
 	print ("Waiting "+str(int(delay))+" min...")
 	VV.Macro.Control.Delay(delay,'min')
+	#list_of_files = glob.glob(r'C:\temp\Nikolas\*')
+	list_of_files = glob.glob(path)
+	latest_file = max(list_of_files, key=os.path.getctime)
+	print ("Latest File in the Folder: "+latest_file)
+
 	
 print ("No new file since "+str(int(delay))+" min")
 InfoMail = EmailToolbox.Email(destin = emailAddress, title = "Acquisition stopped", message = "No new file since "+str(delay)+" min")
