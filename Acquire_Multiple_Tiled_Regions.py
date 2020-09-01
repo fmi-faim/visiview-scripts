@@ -139,7 +139,7 @@ def getAcquisitionTiles(regionIndex, binaryMask, bin, magnificationRatio, height
 	
 	# deals with polyline
 	if VV.Window.Regions.Active.Type == 'PolyLine':
-		for p in range(points-1):
+		for p in range(points-2):
 			dist = math.sqrt(math.pow(CoordX[p+1]-CoordX[p],2)+math.pow(CoordY[p+1]-CoordY[p],2))
 			angleCOS = (CoordX[p+1]-CoordX[p])/dist
 			angleSIN = (CoordY[p+1]-CoordY[p])/dist
