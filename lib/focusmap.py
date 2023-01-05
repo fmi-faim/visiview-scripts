@@ -1,7 +1,7 @@
 import clr
 import sys
 import math
-sys.path.append(r"C:\Program Files\Visitron Systems\VisiView\Tools\OpenCVSharp")
+sys.path.append(r"C:\Program Files\Visitron Systems\VisiView\Tools\OpenCVSharp_4_5_3")
 clr.AddReference("OpenCvSharp")
 from OpenCvSharp import *
 
